@@ -50,7 +50,8 @@ n_croco
 FORECAST_BASE/croco
 FORECAST_BASE/n_croco
 FORECAST_BASE/backup_*/
-FORECAST_BASE/CROCO_FILES/
+FORECAST_BASE/CROCO_FILES/*
+!FORECAST_BASE/CROCO_FILES/croco_grd.nc
 
 # ---------------------------------------------------------------------------
 # Log files
@@ -86,6 +87,14 @@ build/
 # Copernicus / credentials (never commit secrets)
 # ---------------------------------------------------------------------------
 *credentials*
+!**/.example_.copernicusmarine-credentials
 *password*
 *.key
 *.pem
+
+# ---------------------------------------------------------------------------
+# Explicitly include DATASETS_CROCOTOOLS (static tidal/reference datasets)
+# Override the *.nc exclusion above for this directory
+# ---------------------------------------------------------------------------
+!cp_g_col_croco_pytools/DATASETS_CROCOTOOLS/
+!cp_g_col_croco_pytools/DATASETS_CROCOTOOLS/**
