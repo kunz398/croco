@@ -1,0 +1,14 @@
+DATA/
+FORECAST/
+SCRATCH/
+*.nc
+*.log
+*.tar
+*.zip
+.git
+__pycache__/
+26-*/
+node_modules/
+.venv/
+.agent/
+*.ps1

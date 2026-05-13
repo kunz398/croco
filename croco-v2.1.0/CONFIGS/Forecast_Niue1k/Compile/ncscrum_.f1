@@ -1,0 +1,767 @@
+
+
+
+
+
+
+
+
+
+
+
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+
+
+
+
+
+
+
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+
+                      
+                      
+                      
+                      
+                      
+
+
+                      
+
+
+
+
+
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+
+                      
+                     
+
+
+
+
+
+
+
+
+                      
+                      
+                      
+                      
+                      
+
+
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA,
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!
+
+
+
+
+
+
+
+
+
+!-# define float dfloat
+!-# define FLoaT dfloat
+!-# define FLOAT dfloat
+!-# define sqrt dsqrt
+!-# define SQRT dsqrt
+!-# define exp dexp
+!-# define EXP dexp
+!-# define dtanh dtanh
+!-# define TANH dtanh
+
+
+
+
+
+
+
+
+      module ncscrum
+      use param
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+! This is include file "ncscrum.h".
+! ==== == ======= ==== ============
+!
+!===================================================================
+! indices in character array "vname", which holds variable names
+!                                                and attributes.
+! indxTime        time
+! indxZ           free-surface
+! indxUb,indxVb   vertically integrated 2D U,V-momentum components
+!
+! indxU,indxV     3D U- and V-momenta.
+! indxT,indxS,.., indxZoo  tracers (temperature, salinity,
+!                 biological tracers.
+! indxSAND,indxGRAV...
+! indxMUD         gravel,sand & mud sediment tracers
+! indxO,indeW     omega vertical mass flux and true vertical velocity
+! indxR           density anomaly
+! indxbvf         Brunt Vaisala Frequency
+! indxAOU  	  Apparent Oxygen Utilization
+! indxWIND10      surface wind speed 10 m
+! indxpCO2        partial pressure of CO2 in the ocean
+! indxVisc        Horizontal viscosity coefficients
+! indxDiff        Horizontal diffusivity coefficients
+! indxAkv,indxAkt,indxAks  vertical viscosity/diffusivity coefficients
+! indxAkk,indxAkp vertical diffusion coefficients for TKE and GLS
+! indxHbl         depth of planetary boundary layer in KPP model
+! indxHbbl        depth of bottom planetary boundary layer in KPP model
+! indxHel         depth of euphotic layer
+! indxChC         Chlorophyll/Carbon ratio
+! indxTke         Turbulent kinetic energy
+! indxGls         Generic length scale
+! indxLsc         vertical mixing length scale
+! indxHm          time evolving bathymetry
+!
+! indxSSH         observed sea surface height (from climatology)
+! indxSUSTR,indxSVSTR  surface U-, V-momentum stress (wind forcing)
+! indxBustr,indxBvstr  bottom  U-, V-momentum stress
+! indxShflx       net surface heat flux.
+! indxShflx_rsw   shortwave radiation flux
+! indxSwflx       surface fresh water flux
+! indxSST         sea surface temperature
+! indxdQdSST      Q-correction coefficient dQdSST
+! indxSSS         sea surface salinity
+! indxQBAR        river runoff
+! indxBhflx       bottom hydrothermal heat flux
+! indxBwflx       bottom hydrothermal freshwater flux
+!
+! indxAi          fraction of cell covered by ice
+! indxUi,indxVi   U,V-components of sea ice velocity
+! indxHi,indxHS   depth of ice cover and depth of snow cover
+! indxTIsrf       temperature of ice surface
+!
+! ** SEDIMENT (USGS model) **
+! indxBSD,indxBSS bottom sediment grain Density and Size
+!                 to be read from file if(!defined ANA_BSEDIM,
+!                 && !defined SEDIMENT)
+!
+! indxBTHK,       sediment bed thickness, porosity, size class fractions
+! indxBPOR,indxBFRA
+!
+! ** WAVE input data to be read from file if !defined WKB_WWAVE or OW_COUPLING
+! indxWWA          wind induced wave Amplitude
+! indxWWD          wind induced wave Direction
+! indxWWP          wind induced wave Period
+! indxWEB          wave dissipation by breaking,
+! indxWED          wave dissipation by friction,
+! indxWER          wave dissipation by roller breaking,
+!
+! ** WAVE history if WKB model or OW COUPLING or WAVE OFFLINE **
+! indxHRM,indxFRQ  RMS wave height and frequency
+! indxWKX,indxWKE  XI/ETA-dir wavenumber
+! indxEPB,indxEPD  wave breaking and frictional dissipation
+! indxWAC,indxWAR  wave action and roller action density
+! indxEPR          wave roller dissipation
+!
+! ** MRL_WCI **
+! indxSUP          wave set-up
+! indxUST2D        vertically integrated stokes velocity in xi  direction
+! indxVST2D        vertically integrated stokes velocity in eta direction
+! indxUST          stokes velocity in xi  direction
+! indxVST          stokes velocity in eta direction
+! indxWST          vertical stokes velocity
+! indxAkb          eddy viscosity  due to wave breaking
+! indxAkw          eddy difusivity due to wave breaking
+! indxKVF          vortex force
+! indxCALP         surface pressure correction
+! indxKAPS         Bernoulli head
+!
+! ** DIAGNOSTICS_UV **
+!  indxMXadv,indxMYadv,indxMVadv : xi-, eta-, and s- advection terms
+!  indxMCor                      : Coriolis term,
+!  indxMPrsgrd                   : Pressure gradient force term
+!  indxMHmix, indxMVmix          : horizontal and vertical mixinig terms
+!  indxMHdiff                    : horizontal diffusion term (implicit)
+!  indxMrate                     : tendency term
+!  indxMBaro                     : Barotropic coupling term
+!  indxMfast                     : Fast term
+!  indxMBtcr                     : forth-order truncation error
+!  indxMswd, indxMbdr            : surface wind & bed shear stresses (m2/s2)
+!  indxMvf, indxMbrk             : vortex force & breaking body force terms
+!  indxMStCo                     : Stokes-Coriolis terms
+!  indxMVvf                      : vertical vortex force terms (in prsgrd.F)
+!  indxMPrscrt                   : pressure correction terms (in prsgrd.F)
+!  indxMsbk, indxMbwf            : surface breaking & bed wave friction (m2/s2)
+!  indxMfrc                      : near-bed frictional wave streaming as body force (m2/s2)
+!
+! ** DIAGNOSTICS_TS **
+!  indxTXadv,indxTYadv,indxTVadv : xi-, eta-, and s- advection terms
+!  indxTHmix,indxTVmix           : horizontal and vertical mixinig terms
+!  indxTbody                     : body force term
+!  indxTrate                     : tendency term
+!  indxCRT2                      : all ML terms will be calculated relative to criteria 2
+!  indxCRT3                      : all ML terms will be calculated relative to criteria 3
+!  indxCRT4                      : all ML terms will be calculated relative to criteria 4
+!
+! ** DIAGNOSTICS_VRT **
+!  indxvrtXadv,indxvrtYadv       : xi-, eta- advection terms
+!  indxvrtHdiff                  : horizontal diffusion term (implicit)
+!  indxvrtCor                    : Coriolis term,
+!  indxvrtPrsgrd                 : Pressure gradient force term
+!  indxvrtHmix, indxvrtVmix      : horizontal and vertical mixing terms
+!  indxvrtrate                   : tendency term
+!  indxvrtVmix2                  : 2d/3d coupling term
+!  indxvrtWind                   : Wind stress term
+!  indxvrtDrag                   : Bottom drag term
+!  indxvrtBaro                   : Barotropic coupling term
+!  indxvrtfast                   : Fast term
+!
+! ** DIAGNOSTICS_EK **
+!  indxekHadv,indxekHdiff        : Horizontal advection and diffusion terms
+!  indxekVadv                    : Vertical advection terms
+!  indxekCor                     : Coriolis term,
+!  indxekPrsgrd                  : Pressure gradient force term
+!  indxekHmix, indxekVmix        : horizontal and vertical mixing terms
+!  indxekrate                    : tendency term
+!  indxekVmix2                   : 2d/3d coupling term
+!  indxekWind                    : Wind stress term
+!  indxekDrag                    : Bottom drag term
+!  indxekBaro                    : Barotropic coupling term
+!  indxekfast                    : Fast term
+!
+! ** DIAGNOSTICS_PV **
+!  indxpvpv                      : Potential vorticity
+!  indxpvpvd                     : Potential vorticity (using alternative formulation)
+!  indxpvTrhs                    : right hand side of tracer equation
+!  indxpvMrhs                    : right hand side of momentum equation
+!
+!
+! ** DIAGNOSTICS_EDDY **
+!
+!=======================================================================
+! Output file codes
+      integer filetype_his, filetype_avg
+     &       ,filetype_dia, filetype_dia_avg
+     &       ,filetype_diaM, filetype_diaM_avg
+     &       ,filetype_diags_vrt, filetype_diags_vrt_avg
+     &       ,filetype_diags_ek, filetype_diags_ek_avg
+     &       ,filetype_diags_pv, filetype_diags_pv_avg
+     &       ,filetype_diags_eddy_avg
+     &       ,filetype_surf, filetype_surf_avg
+     &       ,filetype_diabio, filetype_diabio_avg
+     &       ,filetype_abl, filetype_abl_avg
+      parameter (filetype_his=1, filetype_avg=2,
+     &           filetype_dia=3, filetype_dia_avg=4,
+     &           filetype_diaM=5, filetype_diaM_avg=6,
+     &           filetype_diags_vrt=7, filetype_diags_vrt_avg=8,
+     &           filetype_diags_ek=9, filetype_diags_ek_avg=10,
+     &           filetype_diags_pv=11, filetype_diags_pv_avg=12,
+     &           filetype_diags_eddy_avg=17,
+     &           filetype_surf=13, filetype_surf_avg=14,
+     &           filetype_diabio=15,filetype_diabio_avg=16,
+     &           filetype_abl=18, filetype_abl_avg=19)
+!
+      integer iloop, indextemp
+      integer indxTime, indxZ, indxUb, indxVb
+      parameter (indxTime=1, indxZ=2, indxUb=3, indxVb=4)
+      integer indxU, indxV
+      parameter (indxU=6, indxV=7)
+
+      integer indxT
+      parameter (indxT=indxV+1)
+
+      integer indxS
+      parameter (indxS=indxV+ntrc_temp+1)
+
+
+
+      integer indxBSD, indxBSS
+      parameter (indxBSD=indxV+ntrc_temp+ntrc_salt+ntrc_mld+ntrc_pas+
+     &           ntrc_bio+1,
+     &           indxBSS=101)
+
+
+      integer indxO, indxW, indxR, indxVisc, indxDiff, indxAkv, indxAkt
+      parameter (indxO=indxV+ntrc_temp+ntrc_salt
+     &                      +ntrc_mld+ntrc_pas+ntrc_bio
+     &                      +ntrc_sed+ntrc_substot
+     &           +ntrc_diats+ntrc_diauv+ntrc_diavrt+ntrc_diaek
+     &           +ntrc_diapv+ntrc_diaeddy+ntrc_surf+ntrc_diabio+1,
+     &           indxW=indxO+1, indxR=indxO+2, indxVisc=indxO+3,
+     &           indxDiff=indxO+4,indxAkv=indxO+5, indxAkt=indxO+6)
+
+
+      integer indxAks
+      parameter (indxAks=indxAkv+ntrc_temp+4)
+      integer indxHbl
+      parameter (indxHbl=indxAkv+ntrc_temp+5)
+      integer indxHbbl
+      parameter (indxHbbl=indxAkv+ntrc_temp+6)
+
+      integer indxSSH
+
+      parameter (indxSSH=indxAkv+ntrc_temp+12)
+
+      integer indxbvf
+      parameter (indxbvf=indxSSH+1)
+
+      integer indxSUSTR, indxSVSTR
+      parameter (indxSUSTR=indxSSH+2, indxSVSTR=indxSSH+3)
+
+      integer indxTime2
+      parameter (indxTime2=indxSSH+4)
+
+      integer indxShflx, indxShflx_rsw
+      parameter (indxShflx=indxSUSTR+5)
+      integer indxSwflx
+      parameter (indxSwflx=indxShflx+1, indxShflx_rsw=indxShflx+2)
+      integer indxSST, indxdQdSST
+      parameter (indxSST=indxShflx_rsw+1, indxdQdSST=indxShflx_rsw+2)
+      integer indxWSPD,indxTAIR,indxRHUM,indxRADLW,indxRADSW,
+     &        indxPRATE,indxUWND,indxVWND,indxPATM
+      parameter (indxWSPD=indxSST+3,  indxTAIR=indxSST+4,
+     &           indxRHUM=indxSST+5,  indxRADLW=indxSST+6,
+     &           indxRADSW=indxSST+7, indxPRATE=indxSST+8,
+     &           indxUWND=indxSST+9,  indxVWND=indxSST+10,
+     &           indxPATM=indxSST+11)
+      integer indxShflx_rlw,indxShflx_lat,indxShflx_sen
+      parameter (indxShflx_rlw=indxSST+12,
+     &           indxShflx_lat=indxSST+13, indxShflx_sen=indxSST+14)
+
+      integer indxWstr
+      parameter (indxWstr=indxSUSTR+23)
+      integer indxUWstr
+      parameter (indxUWstr=indxSUSTR+24)
+      integer indxVWstr
+      parameter (indxVWstr=indxSUSTR+25)
+      integer indxBostr
+      parameter (indxBostr=indxSUSTR+26)
+      integer indxBustr, indxBvstr
+      parameter (indxBustr=indxSUSTR+27,  indxBvstr=indxBustr+1)
+
+
+      integer indxWWA,indxWWD,indxWWP,indxWEB,indxWED,indxWER
+      parameter (indxWWA=indxSUSTR+42, indxWWD=indxWWA+1,
+     &           indxWWP=indxWWA+2
+     &                             )
+
+
+
+
+!
+!
+!===================================================================
+!
+!===================================================================
+!
+! Grid Type Codes:  r2dvar....w3hvar are codes for array types.
+! ==== ==== ======  The codes are set according to the rule:
+!                     horiz_grid_type+4*vert_grid_type
+!    where horiz_grid_type=0,1,2,3 for RHO-,U-,V-,PSI-points
+!    respectively and vert_grid_type=0 for 2D fields; 1,2 for
+!    3D-RHO- and W-vertical points.
+
+!
+      integer r2dvar, u2dvar, v2dvar, p2dvar, r3dvar,
+     &                u3dvar, v3dvar, p3dvar, w3dvar,
+     &                pw3dvar, b3dvar
+      parameter (r2dvar=0, u2dvar=1, v2dvar=2, p2dvar=3,
+     & r3dvar=4, u3dvar=5, v3dvar=6, p3dvar=7, w3dvar=8,
+     & pw3dvar=11, b3dvar=12)
+!            Horizontal array dimensions in netCDF files.
+! xi_rho     WARNING!!! In MPI code in the case of PARALLEL_FILES
+! xi_u       _and_ NON-Periodicity in either XI- or ETA-direction,
+! eta_rho    these depend on corresonding MPI-node indices ii,jj
+! eta_v      and therefore become live variables, which are placed
+!            into common block below rather than defined here as
+!            parameters.
+!
+! Note (P. Marchesiello):
+!   the remark above is now extended to periodic conditions, i.e.,
+!   if PARALLEL_FILES is defined, netCDF files array dimensions are
+!   always set in MPI-Setup and depend on MPI-nodes. After rejoining
+!   the parallel files (ncjoin), the resulting global netCDF file has
+!   the same dimension as it would have if PARALLEL_FILES was undefined.
+!
+      integer xi_rho,xi_u, eta_rho,eta_v
+      parameter (xi_rho=LLm+2,  xi_u=xi_rho-1,
+     &           eta_rho=MMm+2, eta_v=eta_rho-1)
+!
+!====================================================================
+! Naming conventions for indices, variable IDs, etc...
+!
+! prefix ncid_  means netCDF ID for netCDF file
+!        nrec_  record number in netCDF file since initialization
+!        nrpf_  maximum number of records per file  (output netCDF
+!                                                       files only)
+! prefix/ending rst_/_rst refers to restart  netCDF file
+!               his_/_his           history
+!               avg_/_avg           averages
+!                    _frc           forcing
+!                    _clm           climatology
+!                    _qbar          river runoff
+!                    _btf           hydrothermal flux
+!
+! endings refer to:  ___Time  time [in seconds]
+!                    ___Tstep time step numbers and record numbers
+!   all objects      ___Z     free-surface
+!   with these       ___Ub    vertically integrated 2D U-momentum
+!   endings are      ___Vb    vertically integrated 2D V-momentum
+!   either
+!     netCDF IDs,    ___U     3D U-momentum
+!     if occur with  ___V     3D V-momentum
+!     prefices rst/  ___T(NT) tracers
+!     /his/avg       ___R     density anomaly
+!   or               ___O     omega vertical velocity
+!     parameter      ___W     true vertical velocity
+!     indices, if
+!     occur with     ___Akv   vertical viscosity coefficient
+!     prefix indx    ___Akt   vertical T-diffusion coefficient
+!     (see above).   ___Aks   vertical S-diffusion coefficient
+!                    ___Hbl   depth of mixed layer .
+!
+! Sizes of unlimited time dimensions in netCDF files:
+!
+!   ntsms   surface momentum stress in current forcing file.
+!   ntbulk   bulk formulation in current forcing file.
+!   ntsrf   shortwave radiation flux in current forcing file.
+!   ntssh   sea surface height in current climatology file.
+!   ntsst   sea surface temperature in current forcing file.
+!   ntsss   sea surface salinity in current forcing file.
+!   ntstf   surface flux of tracers in current forcing file.
+!   nttclm  tracer variables in current climatology file.
+!   ntuclm  momentum variables in current climatology file.
+!   ntww    wind induced wave data in current forcing file.
+!   ntbulkn bulk formula variables in current forcing file.
+!   ntqbar  river runoff in current forcing file.
+!   ntbtf   bottom hydrothermal flux of tracer in current forcing file.
+!
+! vname    character array for variable names and attributes;
+!=================================================================
+!
+      integer ncidfrc, ncidbulk, ncidclm,  ntsms
+     &     , ncidqbar, ncidbtf
+     &     , ntsrf,  ntssh,  ntsst, ntsss, ntuclm
+     &     , ntbulk, ntqbar, ntww
+
+      integer nttclm(NT), ntstf(NT), nttsrc(NT)
+     &       , ntbtf(NT)
+      integer ncidrst, nrecrst,  nrpfrst
+     &      , rstTime, rstTime2, rstTstep, rstZ,    rstUb,  rstVb
+     &                         , rstU,    rstV
+      integer rstT(NT)
+      integer rstHbl
+      integer rstHbbl
+
+      integer  ncidhis, nrechis,  nrpfhis
+     &      , hisTime, hisTime2, hisTstep, hisZ,    hisUb,  hisVb
+     &      , hisBostr, hisWstr, hisUWstr, hisVWstr
+     &      , hisBustr, hisBvstr
+     &      , hisShflx, hisSwflx, hisShflx_rsw, hisBhflx, hisBwflx
+     &      , hisUnbq, hisVnbq, hisWnbq, hisRnbq, hisCnbq
+     &      , hisU,   hisV,   hisR,    hisHbl, hisHbbl
+     &      , hisO,   hisW,   hisVisc, hisDiff
+     &      , hisAkv, hisAkt, hisAks
+     &      , hisbvf
+     &      , hisShflx_rlw
+     &      , hisShflx_lat,   hisShflx_sen
+      integer hisT(NT)
+
+
+
+
+
+      integer ncidavg, nrecavg,  nrpfavg
+     &      , avgTime, avgTime2, avgTstep, avgZ, avgUb,  avgVb
+     &      , avgBostr, avgWstr, avgUwstr, avgVwstr
+     &      , avgBustr, avgBvstr
+     &      , avgShflx, avgSwflx, avgShflx_rsw, avgBhflx, avgBwflx
+
+     &      , avgU,   avgV,   avgR,    avgHbl, avgHbbl
+     &      , avgO,   avgW,   avgVisc, avgDiff
+     &      , avgAkv, avgAkt, avgAks
+     &      , avgbvf
+
+      integer avgT(NT)
+      integer avgShflx_rlw
+     &      , avgShflx_lat,   avgShflx_sen
+
+
+
+
+
+
+      logical wrthis(1000+NT)
+     &      , wrtavg(1000+NT)
+
+      common/incscrum/
+     &     ncidfrc, ncidbulk,ncidclm, ncidqbar, ncidbtf
+     &     , ntsms, ntsrf, ntssh, ntsst
+     &     , ntuclm, ntsss, ntbulk, ntqbar, ntww
+
+     &     ,  nttclm, ntstf, nttsrc, ntbtf
+
+     &      , ncidrst, nrecrst,  nrpfrst
+     &      , rstTime, rstTime2, rstTstep, rstZ,    rstUb,  rstVb
+     &                         , rstU,    rstV
+     & ,   rstT
+     &      , rstHbl
+     &      , rstHbbl
+
+     &      , ncidhis, nrechis,  nrpfhis
+     &      , hisTime, hisTime2, hisTstep, hisZ,    hisUb,  hisVb
+     &      , hisBostr, hisWstr, hisUWstr, hisVWstr
+     &      , hisBustr, hisBvstr
+     &      , hisShflx, hisSwflx, hisShflx_rsw
+     &      , hisBhflx, hisBwflx
+     &      , hisUnbq, hisVnbq, hisWnbq, hisRnbq, hisCnbq
+     &      , hisU,    hisV,     hisT,    hisR
+     &      , hisO,    hisW,     hisVisc, hisDiff
+     &      , hisAkv,  hisAkt,   hisAks
+     &      , hisHbl,  hisHbbl
+     &      , hisbvf
+     &      , hisShflx_rlw
+     &      , hisShflx_lat, hisShflx_sen
+
+     &      , ncidavg,  nrecavg,  nrpfavg
+     &      , avgTime, avgTime2, avgTstep, avgZ,    avgUb,  avgVb
+     &      , avgBostr, avgWstr, avgUWstr, avgVWstr
+     &      , avgBustr, avgBvstr
+     &      , avgShflx, avgSwflx, avgShflx_rsw
+     &      , avgBhflx, avgBwflx
+     &      , avgU,    avgV
+     &      ,     avgT
+     &      ,     avgR
+     &      , avgO,    avgW,     avgVisc,  avgDiff
+     &      , avgAkv,  avgAkt,   avgAks
+     &      , avgHbl,  avgHbbl
+     &      , avgbvf
+     &      , avgShflx_rlw
+     &      , avgShflx_lat, avgShflx_sen
+
+
+     &      , wrthis
+     &      , wrtavg
+      character*80 date_str, title
+      character*80 origin_date, start_date_run, xios_origin_date
+      integer      start_day, start_month, start_year
+     &         ,   start_hour, start_minute, start_second
+     &         ,   origin_day, origin_month, origin_year
+     &         ,   origin_hour, origin_minute, origin_second
+
+      REAL(kind=8) :: origin_date_in_sec, xios_origin_date_in_sec
+
+      character*180 ininame,  grdname,  hisname
+     &         ,   rstname,  frcname,  bulkname,  usrname
+     &         ,   qbarname, tsrcname
+     &         ,   btfname
+     &                                ,  avgname
+     &                                ,   clmname
+     &                                ,   bry_file
+
+      character*75  vname(20, 1000)
+
+
+      common /cncscrum/   date_str,   title
+     &         ,   origin_date, start_date_run
+     &         ,   xios_origin_date
+     &         ,   ininame,  grdname, hisname
+     &         ,   rstname,  frcname, bulkname,  usrname
+     &         ,   qbarname, tsrcname
+     &         ,   btfname, origin_date_in_sec
+     &         ,   xios_origin_date_in_sec
+     &         ,   start_day, start_month, start_year
+     &         ,   start_hour, start_minute, start_second
+     &         ,   origin_day, origin_month, origin_year
+     &         ,   origin_hour, origin_minute, origin_second
+     &                                ,  avgname
+     &                                ,   clmname
+     &                                ,   bry_file
+     &                                ,   vname
+      end module ncscrum

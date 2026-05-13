@@ -1,0 +1,20 @@
+# dependencies to run the bench script (in addition to the one required for
+# CROCO alone)
+# to plot
+numpy
+matplotlib
+# to display progress bars
+tqdm
+# json with comments
+json5
+# yaml & validate json/yaml correctness
+pyyaml
+jsonschema
+# to check maching of seq vs parallel netcdf files
+netcdf4
+# to get term colors
+termcolor
+# to treat dataset
+xarray
+cartopy
+scipy

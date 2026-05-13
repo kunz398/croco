@@ -1,0 +1,1197 @@
+
+
+
+
+
+
+
+
+
+
+
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+!
+!  This is the "interp.F" script (based on the interpolation implemented in the
+!  Roms Rutgers version)
+!------------------------------------------------------------------------------
+!  This file contains the subfunctions enabling the online interpolation of
+!  forcing datasets on the simulation domain using linear or cubic approach.
+!  These functions applied for all discretisations of the domain, MPI or OPENMP.
+!------------------------------------------------------------------------------
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+
+
+
+
+
+
+
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+
+                      
+                      
+                      
+                      
+                      
+
+
+                      
+
+
+
+
+
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+
+                      
+                     
+
+
+
+
+
+
+
+
+                      
+                      
+                      
+                      
+                      
+
+
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA,
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!
+
+
+
+
+
+
+
+
+
+!-# define float dfloat
+!-# define FLoaT dfloat
+!-# define FLOAT dfloat
+!-# define sqrt dsqrt
+!-# define SQRT dsqrt
+!-# define exp dexp
+!-# define EXP dexp
+!-# define dtanh dtanh
+!-# define TANH dtanh
+
+
+
+
+
+
+
+
+
+      SUBROUTINE linterp2d (LBx, UBx, LBy, UBy,
+     &                      Xinp, Yinp, Finp,
+     &                      Istr, Iend, Jstr, Jend,
+     &                      Xout, Yout, Fout)
+!
+!=======================================================================
+!                                                                      !
+!  Given any gridded 2D field, Finp, this routine linearly interpolate !
+!  to locations (Xout,Yout).  To facilitate the  interpolation  within !
+!  any irregularly gridded 2D field,  the fractional grid cell indices !
+!  (Iout,Jout) with respect Finp are needed at input.  Notice that the !
+!  routine "hindices" can be used to compute these indices.            !
+!                                                                      !
+!  On Input:                                                           !
+!                                                                      !
+!     LBx        I-dimension lower bound of gridded field, Finp.       !
+!     UBx        I-dimension upper bound of gridded field, Finp.       !
+!     LBy        J-dimension lower bound of gridded field, Finp.       !
+!     UBy        J-dimension upper bound of gridded field, Finp.       !
+!     Xinp       X-locations of gridded field, Finp.                   !
+!     Yinp       Y-locations of gridded field, Finp.                   !
+!     Finp       2D field to interpolate from.                         !
+!     Istr       Starting data I-index to interpolate, Fout.           !
+!     Iend       Ending   data I-index to interpolate, Fout.           !
+!     Jstr       Starting data J-index to interpolate, Fout.           !
+!     Jend       Ending   data J-index to interpolate, Fout.           !
+!     Xout       X-locations to interpolate, Fout.                     !
+!     Yout       Y-locations to interpolate, Fout.                     !
+!                                                                      !
+!  On Output:                                                          !
+!                                                                      !
+!     Fout       Interpolated 2D field.                                !
+!                                                                      !
+!=======================================================================
+!
+!
+      implicit none
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+!----------------------------------------------------------------------
+! Dimensions of Physical Grid and array dimensions
+!----------------------------------------------------------------------
+!
+! LLm,MMm  Number of the internal points of the PHYSICAL grid.
+!          in the XI- and ETA-directions [physical side boundary
+!          points and peroodic ghost points (if any) are excluded].
+!
+! Lm,Mm    Number of the internal points [see above] of array
+!          covering a Message Passing subdomain. In the case when
+!          no Message Passing partitioning is used, these two are
+!          the same as LLm,MMm.
+!
+! N        Number of vertical levels.
+!
+      integer  LLm,Lm,MMm,Mm,N, LLm0,MMm0
+      parameter (LLm0=650,   MMm0=690,   N=50)   ! 
+
+      parameter (LLm=LLm0,  MMm=MMm0)
+
+!
+!----------------------------------------------------------------------
+! Number of layers in Sediment (SL)
+!----------------------------------------------------------------------
+!
+      integer N_sl
+      !parameter (N_sl=40)
+      parameter (N_sl=0)
+
+!
+!----------------------------------------------------------------------
+! MPI related variables
+!----------------------------------------------------------------------
+!
+      integer Lmmpi,Mmmpi,iminmpi,imaxmpi,jminmpi,jmaxmpi
+      common /comm_setup_mpi1/ Lmmpi,Mmmpi
+      common /comm_setup_mpi2/ iminmpi,imaxmpi,jminmpi,jmaxmpi
+!
+! Domain subdivision parameters
+! ====== =========== ==========
+!
+! NPP            Maximum allowed number of parallel threads;
+! NSUB_X,NSUB_E  Number of SHARED memory subdomains in XI- and
+!                                                ETA-directions;
+! NNODES        Total number of MPI processes (nodes);
+! NP_XI,NP_ETA  Number of MPI subdomains in XI- and ETA-directions;
+!
+      integer NSUB_X, NSUB_E, NPP
+      parameter (NPP=1)
+      parameter (NSUB_X=1, NSUB_E=NPP)
+
+!
+!----------------------------------------------------------------------
+! Number maximum of weights for the barotropic mode
+!----------------------------------------------------------------------
+!
+      integer NWEIGHT
+      parameter (NWEIGHT=1000)
+
+!
+!----------------------------------------------------------------------
+! Tides
+!----------------------------------------------------------------------
+!
+      integer Ntides             ! Number of tides
+                                 ! ====== == =====
+      parameter (Ntides=8)
+!
+!----------------------------------------------------------------------
+! Wetting-Drying
+!----------------------------------------------------------------------
+!
+!
+!----------------------------------------------------------------------
+! Minimum water depth above which wave forcing is applied
+! (D_wavedry>D_wetdry if WET_DRY is activated)
+!----------------------------------------------------------------------
+!
+!----------------------------------------------------------------------
+! Point sources, Floast, Stations
+!----------------------------------------------------------------------
+!
+
+!
+!----------------------------------------------------------------------
+! Derived dimension parameters
+!----------------------------------------------------------------------
+!
+      integer stdout, Np, NpHz, padd_X,padd_E
+      parameter (stdout=6)
+      parameter (Np=N+1)
+      parameter (NpHz=(N+1+N_sl))
+      parameter (Lm=LLm, Mm=MMm)
+      parameter (padd_X=(Lm+2)/2-(Lm+1)/2)
+      parameter (padd_E=(Mm+2)/2-(Mm+1)/2)
+
+      integer NSA, N2d,N3d,N3dHz, size_XI,size_ETA
+      integer se,sse, sz,ssz
+      parameter (NSA=28)
+      parameter (size_XI=7+(Lm+NSUB_X-1)/NSUB_X)
+      parameter (size_ETA=7+(Mm+NSUB_E-1)/NSUB_E)
+      parameter (sse=size_ETA/Np, ssz=Np/size_ETA)
+      parameter (se=sse/(sse+ssz), sz=1-se)
+      parameter (N2d=size_XI*(se*size_ETA+sz*Np))
+      parameter (N3d=size_XI*size_ETA*Np)
+      parameter (N3dHz=size_XI*size_ETA*NpHz)
+
+!
+!----------------------------------------------------------------------
+! I/O : flag for type sigma vertical transformation
+!----------------------------------------------------------------------
+!
+      real Vtransform
+      parameter (Vtransform=2)
+
+!
+!----------------------------------------------------------------------
+! Number of tracers
+!----------------------------------------------------------------------
+!
+      integer   NT, NTA, itemp, NTot
+      integer   ntrc_temp, ntrc_salt, ntrc_pas, ntrc_bio, ntrc_sed
+      integer   ntrc_subs, ntrc_substot
+      integer   ntrc_mld
+!
+      parameter (itemp=1)
+      parameter (ntrc_temp=1)
+      parameter (ntrc_salt=1)
+      parameter (ntrc_mld=0)
+      parameter (ntrc_pas=0)
+      parameter (ntrc_bio=0)
+
+
+!
+      parameter (ntrc_subs=0, ntrc_substot=0)
+
+!
+      parameter (ntrc_sed=0)
+!
+! Total number of active tracers
+!
+      parameter (NTA=itemp+ntrc_salt)
+
+!
+! Total number of tracers
+!
+      parameter (NT=itemp+ntrc_salt+ntrc_pas+ntrc_bio+ntrc_sed+ntrc_mld)
+      parameter (NTot=NT)
+
+
+
+
+
+!
+!----------------------------------------------------------------------
+! Tracer identification indices
+!----------------------------------------------------------------------
+!
+      integer   ntrc_diats, ntrc_diauv, ntrc_diabio
+      integer   ntrc_diavrt, ntrc_diaek, ntrc_diapv
+      integer   ntrc_diaeddy, ntrc_surf
+     &          , isalt
+!
+
+
+!
+! ================  Parameters  =====================
+!
+
+      parameter (isalt=itemp+1)
+
+!
+! ===  BIOLOGY  ===
+!
+      parameter (ntrc_diabio=0)
+
+!
+! === SEDIMENTS ===
+!
+
+
+!
+! ===  u,v and tracer equations Diagnostics  ===
+!
+      parameter (ntrc_diats=0)
+      parameter (ntrc_diauv=0)
+      parameter (ntrc_diavrt=0)
+      parameter (ntrc_diaek=0)
+      parameter (ntrc_diapv=0)
+      parameter (ntrc_diaeddy=0)
+      parameter (ntrc_surf=0)
+
+!
+!----------------------------------------------------------------------
+! Max time increment for computing bottom stress at the 3D fast time
+! steps
+!----------------------------------------------------------------------
+!
+!
+!  Imported variable declarations.
+!
+      integer, intent(in) :: LBx, UBx, LBy, UBy
+      integer, intent(in) :: Istr, Iend, Jstr, Jend
+!
+      real(kind=8), intent(in) :: Xinp(LBx:UBx)
+      real(kind=8), intent(in) :: Yinp(LBy:UBy)
+      real(kind=8), intent(in) :: Finp(LBx:UBx,LBy:UBy)
+!
+      real(kind=8), intent(in) :: Xout(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real(kind=8), intent(in) :: Yout(0:Lm+1+padd_X,0:Mm+1+padd_E)
+!
+      real(kind=8), intent(out) :: Fout(0:Lm+1+padd_X,0:Mm+1+padd_E)
+!
+!  Local variable declarations.
+!
+      integer i, i1, i2, j, j1, j2, ii, jj
+      real(kind=8) cff, x, x1, x2, y, y1, y2
+!
+!-----------------------------------------------------------------------
+!  Linearly interpolate requested field
+!-----------------------------------------------------------------------
+!
+      DO j=Jstr,Jend
+        DO i=Istr,Iend
+!          i1=INT(Iout(i,j))
+!          i2=i1+1
+!          j1=INT(Jout(i,j))
+!          j2=j1+1
+           DO ii=LBx,(UBx-1)
+             if ((Xinp(ii).le.Xout(i,j)).and.
+     &           (Xinp(ii+1).gt.Xout(i,j))) then
+               i1=ii
+               i2=ii+1
+               goto 10
+             endif
+           enddo
+           print*, 'Did not find i1 and i2'
+           goto 100
+ 10        continue
+           DO jj=LBy,(UBy-1)
+             if ((Yinp(jj).le.Yout(i,j)).and.
+     &           (Yinp(jj+1).gt.Yout(i,j))) then
+               j1=jj
+               j2=jj+1
+               goto 20
+             endif
+           enddo
+           print*, 'Did not find j1 and j2'
+           goto 100
+ 20        continue
+
+          IF (((LBx.le.i1).and.(i1.le.UBx)).and.
+     &        ((LBy.le.j1).and.(j1.le.UBy))) THEN
+            x1=Xinp(i1)
+            x2=Xinp(i2)
+            y1=Yinp(j1)
+            y2=Yinp(j2)
+            x=Xout(i,j)
+            y=Yout(i,j)
+
+            cff= Finp(i1,j1)*(x2-x )*(y2-y )
+     &          +Finp(i2,j1)*(x -x1)*(y2-y )
+     &          +Finp(i1,j2)*(x2-x )*(y -y1)
+     &          +Finp(i2,j2)*(x -x1)*(y -y1)
+
+            Fout(i,j)=cff/((x2-x1)*(y2-y1))
+          END IF
+        END DO
+      END DO
+      RETURN
+ 100  continue
+      print*, 'error in linterp2d'
+      END SUBROUTINE linterp2d
+
+! ******************************************************************************
+      SUBROUTINE cinterp2d (LBx, UBx, LBy, UBy,
+     &                      Xinp, Yinp, Finp,
+     &                      Istr, Iend, Jstr, Jend,
+     &                      Xout, Yout, Fout)
+!
+!=======================================================================
+!                                                                      !
+!  Given any gridded 2D field,  Finp, at locations (Xinp,Yinp) this    !
+!  routine performs bicubic interpolation at locations (Xout,Yout).    !
+!  To facilitate the interpolation within any  irregularly  gridded    !
+!  field, the fractional grid cell indices (Iout,Jout) with respect    !
+!  Finp are needed at input. Notice that the routine "hindices" can    !
+!  be used to compute these indices.                                   !
+!                                                                      !
+!  On Input:                                                           !
+!                                                                      !
+!     LBx        I-dimension lower bound of gridded field, Finp.       !
+!     UBx        I-dimension upper bound of gridded field, Finp.       !
+!     LBy        J-dimension lower bound of gridded field, Finp.       !
+!     UBy        J-dimension upper bound of gridded field, Finp.       !
+!     Xinp       X-locations of gridded field, Finp.                   !
+!     Yinp       Y-locations of gridded field, Finp.                   !
+!     Finp       2D field to interpolate from.                         !
+!     Istr       Starting data I-index to interpolate, Fout.           !
+!     Iend       Ending   data I-index to interpolate, Fout.           !
+!     Jstr       Starting data J-index to interpolate, Fout.           !
+!     Jend       Ending   data J-index to interpolate, Fout.           !
+!     Xout       X-locations to interpolate, Fout.                     !
+!     Yout       Y-locations to interpolate, Fout.                     !
+!                                                                      !
+!  On Output:                                                          !
+!                                                                      !
+!     Fout       Interpolated 2D field.                                !
+!                                                                      !
+!=======================================================================
+!
+      implicit none
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+!----------------------------------------------------------------------
+! Dimensions of Physical Grid and array dimensions
+!----------------------------------------------------------------------
+!
+! LLm,MMm  Number of the internal points of the PHYSICAL grid.
+!          in the XI- and ETA-directions [physical side boundary
+!          points and peroodic ghost points (if any) are excluded].
+!
+! Lm,Mm    Number of the internal points [see above] of array
+!          covering a Message Passing subdomain. In the case when
+!          no Message Passing partitioning is used, these two are
+!          the same as LLm,MMm.
+!
+! N        Number of vertical levels.
+!
+      integer  LLm,Lm,MMm,Mm,N, LLm0,MMm0
+      parameter (LLm0=650,   MMm0=690,   N=50)   ! 
+
+      parameter (LLm=LLm0,  MMm=MMm0)
+
+!
+!----------------------------------------------------------------------
+! Number of layers in Sediment (SL)
+!----------------------------------------------------------------------
+!
+      integer N_sl
+      !parameter (N_sl=40)
+      parameter (N_sl=0)
+
+!
+!----------------------------------------------------------------------
+! MPI related variables
+!----------------------------------------------------------------------
+!
+      integer Lmmpi,Mmmpi,iminmpi,imaxmpi,jminmpi,jmaxmpi
+      common /comm_setup_mpi1/ Lmmpi,Mmmpi
+      common /comm_setup_mpi2/ iminmpi,imaxmpi,jminmpi,jmaxmpi
+!
+! Domain subdivision parameters
+! ====== =========== ==========
+!
+! NPP            Maximum allowed number of parallel threads;
+! NSUB_X,NSUB_E  Number of SHARED memory subdomains in XI- and
+!                                                ETA-directions;
+! NNODES        Total number of MPI processes (nodes);
+! NP_XI,NP_ETA  Number of MPI subdomains in XI- and ETA-directions;
+!
+      integer NSUB_X, NSUB_E, NPP
+      parameter (NPP=1)
+      parameter (NSUB_X=1, NSUB_E=NPP)
+
+!
+!----------------------------------------------------------------------
+! Number maximum of weights for the barotropic mode
+!----------------------------------------------------------------------
+!
+      integer NWEIGHT
+      parameter (NWEIGHT=1000)
+
+!
+!----------------------------------------------------------------------
+! Tides
+!----------------------------------------------------------------------
+!
+      integer Ntides             ! Number of tides
+                                 ! ====== == =====
+      parameter (Ntides=8)
+!
+!----------------------------------------------------------------------
+! Wetting-Drying
+!----------------------------------------------------------------------
+!
+!
+!----------------------------------------------------------------------
+! Minimum water depth above which wave forcing is applied
+! (D_wavedry>D_wetdry if WET_DRY is activated)
+!----------------------------------------------------------------------
+!
+!----------------------------------------------------------------------
+! Point sources, Floast, Stations
+!----------------------------------------------------------------------
+!
+
+!
+!----------------------------------------------------------------------
+! Derived dimension parameters
+!----------------------------------------------------------------------
+!
+      integer stdout, Np, NpHz, padd_X,padd_E
+      parameter (stdout=6)
+      parameter (Np=N+1)
+      parameter (NpHz=(N+1+N_sl))
+      parameter (Lm=LLm, Mm=MMm)
+      parameter (padd_X=(Lm+2)/2-(Lm+1)/2)
+      parameter (padd_E=(Mm+2)/2-(Mm+1)/2)
+
+      integer NSA, N2d,N3d,N3dHz, size_XI,size_ETA
+      integer se,sse, sz,ssz
+      parameter (NSA=28)
+      parameter (size_XI=7+(Lm+NSUB_X-1)/NSUB_X)
+      parameter (size_ETA=7+(Mm+NSUB_E-1)/NSUB_E)
+      parameter (sse=size_ETA/Np, ssz=Np/size_ETA)
+      parameter (se=sse/(sse+ssz), sz=1-se)
+      parameter (N2d=size_XI*(se*size_ETA+sz*Np))
+      parameter (N3d=size_XI*size_ETA*Np)
+      parameter (N3dHz=size_XI*size_ETA*NpHz)
+
+!
+!----------------------------------------------------------------------
+! I/O : flag for type sigma vertical transformation
+!----------------------------------------------------------------------
+!
+      real Vtransform
+      parameter (Vtransform=2)
+
+!
+!----------------------------------------------------------------------
+! Number of tracers
+!----------------------------------------------------------------------
+!
+      integer   NT, NTA, itemp, NTot
+      integer   ntrc_temp, ntrc_salt, ntrc_pas, ntrc_bio, ntrc_sed
+      integer   ntrc_subs, ntrc_substot
+      integer   ntrc_mld
+!
+      parameter (itemp=1)
+      parameter (ntrc_temp=1)
+      parameter (ntrc_salt=1)
+      parameter (ntrc_mld=0)
+      parameter (ntrc_pas=0)
+      parameter (ntrc_bio=0)
+
+
+!
+      parameter (ntrc_subs=0, ntrc_substot=0)
+
+!
+      parameter (ntrc_sed=0)
+!
+! Total number of active tracers
+!
+      parameter (NTA=itemp+ntrc_salt)
+
+!
+! Total number of tracers
+!
+      parameter (NT=itemp+ntrc_salt+ntrc_pas+ntrc_bio+ntrc_sed+ntrc_mld)
+      parameter (NTot=NT)
+
+
+
+
+
+!
+!----------------------------------------------------------------------
+! Tracer identification indices
+!----------------------------------------------------------------------
+!
+      integer   ntrc_diats, ntrc_diauv, ntrc_diabio
+      integer   ntrc_diavrt, ntrc_diaek, ntrc_diapv
+      integer   ntrc_diaeddy, ntrc_surf
+     &          , isalt
+!
+
+
+!
+! ================  Parameters  =====================
+!
+
+      parameter (isalt=itemp+1)
+
+!
+! ===  BIOLOGY  ===
+!
+      parameter (ntrc_diabio=0)
+
+!
+! === SEDIMENTS ===
+!
+
+
+!
+! ===  u,v and tracer equations Diagnostics  ===
+!
+      parameter (ntrc_diats=0)
+      parameter (ntrc_diauv=0)
+      parameter (ntrc_diavrt=0)
+      parameter (ntrc_diaek=0)
+      parameter (ntrc_diapv=0)
+      parameter (ntrc_diaeddy=0)
+      parameter (ntrc_surf=0)
+
+!
+!----------------------------------------------------------------------
+! Max time increment for computing bottom stress at the 3D fast time
+! steps
+!----------------------------------------------------------------------
+!
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+! This is include file "grid.h": Environmental two-dimensional
+! arrays associated with curvilinear horizontal coordinate system.
+!
+! h       Model topography (bottom depth [m] at RHO-points.)
+! dh      Topograhy increment in case of moving bathymetry
+! f       Coriolis parameter [1/s].
+! fomn    Compound term, f/[pm*pn] at RHO points.
+!
+! angler  Angle [radians] between XI-axis and the direction
+!             to the EAST at RHO-points.
+!
+! latr    Latitude (degrees_north) at RHO-, U-, and V-points.
+! latu
+! latv
+! lonr    Longitude (degrees_east) at RHO-, U-, and V-points.
+! lonu
+! lonv
+!
+! xp      XI-coordinates [m] at PSI-points.
+! xr      XI-coordinates (m] at RHO-points.
+! yp      ETA-coordinates [m] at PSI-points.
+! yr      ETA-coordinates [m] at RHO-points.
+!
+! pm      Coordinate transformation metric "m" [1/meters]
+!              associated with the differential distances in XI.
+! pn      Coordinate transformation metric "n" [1/meters]
+!               associated with the differential distances in ETA.
+! om_u    Grid spacing [meters] in the XI -direction at U-points.
+! om_v    Grid spacing [meters] in the XI -direction at V-points.
+! on_u    Grid spacing [meters] in the ETA-direction at U-points.
+! on_v    Grid spacing [meters] in the ETA-direction at V-points.
+!
+! dmde    ETA-derivative of inverse metric factor "m", d(1/M)/d(ETA).
+! dndx     XI-derivative  of inverse metric factor "n", d(1/N)/d(XI).
+!
+! pmon_p  Compound term, pm/pn at PSI-points.
+! pmon_r  Compound term, pm/pn at RHO-points.
+! pmon_u  Compound term, pm/pn at U-points.
+! pnom_p  Compound term, pn/pm at PSI-points.
+! pnom_r  Compound term, pn/pm at RHO-points.
+! pnom_v  Compound term, pn/pm at V-points.
+!
+! rmask   Land-sea masking arrays at RHO-,U-,V- and PSI-points.
+! umask   (rmask,umask,vmask) = (0=Land, 1=Sea);
+! vmask
+! pmask    pmask=(0=Land, 1=Sea, 1-gamma2 =boundary).
+!
+! reducu  reduction coefficient along x-axis for rivers sections
+! reducv  reduction coefficient along y-axis for rivers sections
+
+      real h(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real hinv(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real f(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real fomn(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      common /grid_h/h /grid_hinv/hinv /grid_f/f /grid_fomn/fomn
+
+      real angler(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      common /grid_angler/angler
+
+      real latr(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real lonr(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real latu(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real lonu(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real latv(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real lonv(0:Lm+1+padd_X,0:Mm+1+padd_E)
+
+      common /grid_latr/latr /grid_lonr/lonr
+      common /grid_latu/latu /grid_lonu/lonu
+      common /grid_latv/latv /grid_lonv/lonv
+
+      real pm(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pn(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real om_r(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real on_r(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real om_u(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real on_u(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real om_v(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real on_v(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real om_p(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real on_p(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pn_u(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pm_v(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pm_u(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pn_v(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      common /metrics_pm/pm    /metrics_pn/pn
+      common /metrics_omr/om_r /metrics_on_r/on_r
+      common /metrics_omu/om_u /metrics_on_u/on_u
+      common /metrics_omv/om_v /metrics_on_v/on_v
+      common /metrics_omp/om_p /metrics_on_p/on_p
+      common /metrics_pnu/pn_u /metrics_pmv/pm_v
+      common /metrics_pmu/pm_u /metrics_pnv/pn_v
+
+      real dmde(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real dndx(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      common /metrics_dmde/dmde    /metrics_dndx/dndx
+
+      real pmon_p(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pmon_r(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pmon_u(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pnom_p(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pnom_r(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pnom_v(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real grdscl(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      common /metrics_pmon_p/pmon_p /metrics_pnom_p/pnom_p
+      common /metrics_pmon_r/pmon_r /metrics_pnom_r/pnom_r
+      common /metrics_pmon_u/pmon_u /metrics_pnom_v/pnom_v
+      common /metrics_grdscl/grdscl
+
+      real rmask(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pmask(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real umask(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real vmask(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real pmask2(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      common /mask_r/rmask
+      common /mask_p/pmask
+      common /mask_u/umask
+      common /mask_v/vmask
+      common /mask_p2/pmask2
+
+
+
+      real zob(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      common /Z0B_VAR/zob
+
+!
+!  Imported variable declarations.
+!
+      integer, intent(in) :: LBx, UBx, LBy, UBy
+      integer, intent(in) :: Istr, Iend, Jstr, Jend
+!
+      real(kind=8), intent(in) :: Xinp(LBx:UBx)
+      real(kind=8), intent(in) :: Yinp(LBy:UBy)
+      real(kind=8), intent(in) :: Finp(LBx:UBx,LBy:UBy)
+!
+      real(kind=8), intent(in) :: Xout(0:Lm+1+padd_X,0:Mm+1+padd_E)
+      real(kind=8), intent(in) :: Yout(0:Lm+1+padd_X,0:Mm+1+padd_E)
+!
+      real(kind=8), intent(out) :: Fout(0:Lm+1+padd_X,0:Mm+1+padd_E)
+!
+!  Local variable declarations.
+!
+      integer i, ic, iter, i1, i2, j, jc, j1, j2, ii, jj
+
+      real(kind=8) :: a11, a12, a21, a22
+      real(kind=8) :: e11, e12, e21, e22
+      real(kind=8) :: cff, d1, d2, dfc, dx, dy, eta, xi, xy, yx
+      real(kind=8) :: f0, fx, fxx, fxxx, fxxy, fxy, fxyy, fy, fyy, fyyy
+
+      real(kind=8), parameter :: C01 = 1.0/48.0
+      real(kind=8), parameter :: C02 = 1.0/32.0
+      real(kind=8), parameter :: C03 = 0.0625                  ! 1/16
+      real(kind=8), parameter :: C04 = 1.0/6.0
+      real(kind=8), parameter :: C05 = 0.25
+      real(kind=8), parameter :: C06 = 0.5
+      real(kind=8), parameter :: C07 = 0.3125                  ! 5/16
+      real(kind=8), parameter :: C08 = 0.625                   ! 5/8
+      real(kind=8), parameter :: C09 = 1.5
+      real(kind=8), parameter :: C10 = 13.0/24.0
+
+      real(kind=8), parameter :: LIMTR = 3.0
+      real(kind=8), parameter :: spv = 0.0            ! HGA need work
+
+      real(kind=8), dimension(-1:2,-1:2) :: dfx, dfy, ff
+!
+!-----------------------------------------------------------------------
+!  Interpolates requested field locations (Xout,Yout).
+!-----------------------------------------------------------------------
+!
+      DO j=Jstr,Jend
+        DO i=Istr,Iend
+!          i1=INT(Iout(i,j))
+!          i2=i1+1
+!          j1=INT(Jout(i,j))
+!          j2=j1+1
+           DO ii=LBx,(UBx-1)
+             if ((Xinp(ii).le.Xout(i,j)).and.
+     &           (Xinp(ii+1).gt.Xout(i,j))) then
+               i1=ii
+               i2=ii+1
+               goto 10
+             endif
+           enddo
+           print*, 'Did not find i1 and i2',
+     &           Istr,Iend,Jstr,Jend,i,j,Xout(i,j),Xout(i-1,j)
+           goto 100
+ 10        continue
+           DO jj=LBy,UBy-1
+             if ((Yinp(jj).le.Yout(i,j)).and.
+     &           (Yinp(jj+1).gt.Yout(i,j))) then
+               j1=jj
+               j2=jj+1
+               goto 20
+             endif
+           enddo
+           print*, 'Did not find j1 and j2'
+           goto 100
+ 20        continue
+
+          IF (((LBx.le.i1).and.(i1.le.UBx)).and.
+     &        ((LBy.le.j1).and.(j1.le.UBy))) THEN
+!
+!  Determine local fractional coordinates (xi,eta) corresponding to
+!  the target point (Xout,Yout) on the grid (Xinp,Yinp). Here, "xi"
+!  and "eta" are defined, in such a way, that xi=eta=0 corresponds
+!  to the middle of the cell (i1:i1+1,j1:j1+1), while xi=+/-1/2 and
+!  eta=+/-1/2 (any combination +/- signs) corresponds to the four
+!  corner points of the cell. Inside the cell it is assumed that
+!  (Xout,Yout) are expressed via bi-linear functions of (xi,eta),
+!  where term proportional to xi*eta does not vanish because
+!  coordinate transformation may be at least weakly non-orthogonal
+!  due to discretization errors. The associated non-linear system
+!  is solved by iterative method of Newton.
+!
+            xy=Xinp(i2)-Xinp(i1)-Xinp(i2)+Xinp(i1)
+            yx=Yinp(j2)-Yinp(j2)-Yinp(j1)+Yinp(j1)
+            dx=Xout(i,j)-0.25*(Xinp(i2)+Xinp(i1)+
+     &                         Xinp(i2)+Xinp(i1))
+            dy=Yout(i,j)-0.25*(Yinp(j2)+Yinp(j2)+
+     &                         Yinp(j1)+Yinp(j1))
+!
+!  The coordinate transformation matrix:
+!
+!           e11 e12
+!           e21 e22
+!
+!  contains derivatives of (Xinp,Yinp) with respect to (xi,eta). Because
+!  the coordinates may be non-orthogonal (at least due to discretization
+!  errors), the nonlinear system
+!
+!           e11*xi+e12*eta+xy*xi*eta=dx
+!           e21*xi+e22*eta+yx*xi*eta=dy
+!
+!  needs to be solved in order to retain symmetry.
+!
+            e11=0.5*(Xinp(i2)-Xinp(i1)+Xinp(i2)-Xinp(i1))
+            e12=0.5*(Xinp(i2)+Xinp(i1)-Xinp(i2)-Xinp(i1))
+            e21=0.5*(Yinp(j2)-Yinp(j2)+Yinp(j1)-Yinp(j1))
+            e22=0.5*(Yinp(j2)+Yinp(j2)-Yinp(j1)-Yinp(j1))
+!
+            cff=1.0/(e11*e22-e12*e21)
+            xi=cff*(e22*dx-e12*dy)
+            eta=cff*(e11*dy-e21*dx)
+!
+            DO iter=1,4
+              d1=dx-e11*xi-e12*eta-xy*xi*eta
+              d2=dy-e21*xi-e22*eta-yx*xi*eta
+              a11=e11+xy*eta
+              a12=e12+xy*xi
+              a21=e21+yx*eta
+              a22=e22+yx*xi
+              cff=1.0/(a11*a22-a12*a21)
+              xi =xi +cff*(a22*d1-a12*d2)
+              eta=eta+cff*(a11*d2-a21*d1)
+            END DO
+
+!
+!  Genuinely two-dimensional, isotropic cubic interpolation scheme
+!  using 12-point stencil.  In the code below the interpolated field,
+!  Fout, is expanded into two-dimensional Taylor series of local
+!  fractional coordinates "xi" and "eta", retaining all terms of
+!  combined power up to third order (that is, xi, eta, xi^2, eta^2,
+!  xi*eta, xi^3, eta^3, xi^2*eta, and xi*eta^2), with all
+!  coefficients (i.e, derivatives) computed via           x  x
+!  two-dimensional finite difference expressions          |  |
+!  of "natural" order of accuracy: 4th-order for       x--x--x--x
+!  the field itself and its first derivatives in          |  |
+!  both directions; and 2nd-order for all higher-      x--x--x--x
+!  order derivatives. The permissible range of            |  |
+!  of coordinates is -1/2 < xi,eta < +1/2, which          x--x
+!  covers the central cell on the stencil, while
+!  xi=eta=0 corresponds to its center. This interpolation scheme has
+!  the property that if xi,eta=+/-1/2 (any combination of +/- signs)
+!  it reproduces exactly value of the function at the corresponding
+!  corner of the central "working" cell. However, it does not pass
+!  exactly through the  extreme points of the stencil, where either
+!  xi=+/-3/2 or eta+/-3/2. And, unlike a split-directional scheme,
+!  when interpolating along the line eta=+/-1/2 (similarly xi=+/-1/2),
+!  it has non-zero contribution from points on the side from the line,
+!  except if xi=-1/2; 0; +1/2 (similarly eta=-1/2; 0; +1/2).
+!
+            DO jc=-1,2
+              DO ic=-1,2
+                ff(ic,jc)=Finp(MAX(1,MIN(UBx,i1+ic)),
+     &                         MAX(1,MIN(UBy,j1+jc)))
+              END DO
+            END DO
+
+            f0=C07*(ff(1,1)+ff(1,0)+ff(0,1)+ff(0,0))-
+     &         C02*(ff(2,0)+ff(2,1)+ff(1,2)+ff(0,2)+
+     &              ff(-1,1)+ff(-1,0)+ff(0,-1)+ff(1,-1))
+
+            fx=C08*(ff(1,1)+ff(1,0)-ff(0,1)-ff(0,0))-
+     &         C01*(ff(2,1)+ff(2,0)-ff(-1,1)-ff(-1,0))-
+     &         C03*(ff(1,2)-ff(0,2)+ff(1,-1)-ff(0,-1))
+
+            fy=C08*(ff(1,1)-ff(1,0)+ff(0,1)-ff(0,0))-
+     &         C01*(ff(1,2)+ff(0,2)-ff(1,-1)-ff(0,-1))-
+     &         C03*(ff(2,1)-ff(2,0)+ff(-1,1)-ff(-1,0))
+
+            fxy=ff(1,1)-ff(1,0)-ff(0,1)+ff(0,0)
+
+            fxx=C05*(ff(2,1)-ff(1,1)-ff(0,1)+ff(-1,1)+
+     &               ff(2,0)-ff(1,0)-ff(0,0)+ff(-1,0))
+
+            fyy=C05*(ff(1,2)-ff(1,1)-ff(1,0)+ff(1,-1)+
+     &               ff(0,2)-ff(0,1)-ff(0,0)+ff(0,-1))
+
+            fxxx=C06*(ff(2,1)+ff(2,0)-ff(-1,1)-ff(-1,0))-
+     &           C09*(ff(1,1)+ff(1,0)-ff(0,1)-ff(0,0))
+
+            fyyy=C06*(ff(1,2)+ff(0,2)-ff(1,-1)-ff(0,-1))-
+     &           C09*(ff(1,1)-ff(1,0)+ff(0,1)-ff(0,0))
+
+            fxxy=C06*(ff(2,1)-ff(1,1)-ff(0,1)+ff(-1,1)-
+     &                ff(2,0)+ff(1,0)+ff(0,0)-ff(-1,0))
+
+            fxyy=C06*(ff(1,2)-ff(1,1)-ff(1,0)+ff(1,-1)-
+     &                ff(0,2)+ff(0,1)+ff(0,0)-ff(0,-1))
+            Fout(i,j)=f0+
+     &                fx*xi+
+     &                fy*eta+
+     &                C06*fxx*xi*xi+
+     &                fxy*xi*eta+
+     &                C06*fyy*eta*eta+
+     &                C04*fxxx*xi*xi*xi+
+     &                C06*fxxy*xi*xi*eta+
+     &                C04*fyyy*eta*eta*eta+
+     &                C06*fxyy*xi*eta*eta
+          END IF
+        END DO
+      END DO
+
+      RETURN
+
+ 100  continue
+      print*, 'error in cinterp2d'
+      END SUBROUTINE cinterp2d

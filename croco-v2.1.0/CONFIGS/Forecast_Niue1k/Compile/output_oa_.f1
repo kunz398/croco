@@ -1,0 +1,315 @@
+
+
+
+
+
+
+
+
+
+
+
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+! 
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+!======================================================================
+!
+!> @brief Croco interface for Online Analysis (OA=OnlineAnalysis)
+!! - Outputs the online spectral and wavelet analyses with XIOS
+!!
+!! @details written to support tile-threads and 
+!!  possible dual OpenMP-MPI parallelization. 
+!!  See Online_spectral_diags called by main.F and step.F
+!!  More history/info in source module_interface_oa.F90
+!!
+!> @authors  
+!! - B. Lemieux-Dudon
+!!  - Croco Tile-thread compliant version (2021) 
+!!    supporting tile-threads and possible dual OpenMP-MPI 
+!!    parallelization of the horizontal domain
+!!     => output_oa : OA updates global array looping on tiles 
+!!        and finally send them to XIOS (out of the loop)
+!!     => var2d_oa_out, var3d_oa_out : 
+!!        2D using Croco working arrays work2d, work2d2
+!!     => module_parameter_oa : allocating var3d_oa, var2d_oa 
+!!        to the croco GLOBAL_3D_ARRAY, 2D_ARRAY 
+!!  - based on a preliminary Croco-OA interface version : spring 2020.
+!! - More history (authors, comments) in source module_interface_oa.F90
+!> @todo BLXD TODO test var3d_oa_out with work.h as applied in
+!!  var2d_oa_out
+!
+!  REFERENCE:
+!  
+!======================================================================
+!
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+
+
+
+
+
+
+
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+
+                      
+                      
+                      
+                      
+                      
+
+
+                      
+
+
+
+
+
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+
+                      
+                     
+
+
+
+
+
+
+
+
+                      
+                      
+                      
+                      
+                      
+
+
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA,
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!======================================================================
+! CROCO is a branch of ROMS developped at IRD, INRIA, 
+! Ifremer, CNRS and Univ. Toulouse III  in France
+! The two other branches from UCLA (Shchepetkin et al)
+! and Rutgers University (Arango et al) are under MIT/X style license.
+! CROCO specific routines (nesting) are under CeCILL-C license.
+!
+! CROCO website : http://www.croco-ocean.org
+!======================================================================
+!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!
+
+
+
+
+
+
+
+
+
+!-# define float dfloat
+!-# define FLoaT dfloat
+!-# define FLOAT dfloat
+!-# define sqrt dsqrt
+!-# define SQRT dsqrt
+!-# define exp dexp
+!-# define EXP dexp
+!-# define dtanh dtanh
+!-# define TANH dtanh
+
+
+
+
+
+
+
+
+! BLXD includes :
+! - cppdefs_dev.h
+! - set_global_definitions.h
+!   with 0:Lm+1+padd_X,0:Mm+1+padd_E
+!        PRIVATE_SCRATCH_2D_ARRAY... 
+
+      subroutine output_oa_empty
+      return
+      end subroutine output_oa_empty
+
+
