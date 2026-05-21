@@ -53,12 +53,10 @@ if __name__ == '__main__':
         output_files = sorted(glob.glob(os.path.join(path, 'd1_temp_salt_uv_z.nc')))
     concat_output = os.path.join(path, 'd1_temp_salt_uv_z_all.nc')
 
-    print(f"Concatenating {len(output_files)} files -> {os.path.basename(concat_output)}")
-    if len(output_files) == 1:
-        import shutil
-        shutil.copy2(output_files[0], concat_output)
-        print(f"Single file: copied to {os.path.basename(concat_output)}")
+    if len(output_files) <= 1:
+        print("Only one output file found; skipping concatenation.")
     else:
+        print(f"Concatenating {len(output_files)} files -> {os.path.basename(concat_output)}")
         # Make t a record dimension in each file so ncrcat can concatenate
         rec_files = []
         for f in output_files:

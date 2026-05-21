@@ -14,6 +14,7 @@ gb_*/
 
 # Old duplicate tooling copies
 old_*/
+croco_container_files/
 
 # ---------------------------------------------------------------------------
 # Large data / model output files

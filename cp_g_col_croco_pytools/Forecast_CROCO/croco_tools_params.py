@@ -101,8 +101,8 @@ CROCOTOOLS_dir = '/home/oscar/Documentos/ANH/croco_tools_py-main/'
 #
 #  Run directory
 #
-#RUN_dir = '/home/croco/croco_pytools/14-05-2026/'
-RUN_dir = '/home/croco/croco_pytools/14-05-2026/'
+#RUN_dir = '/home/croco/croco_pytools/18-05-2026/'
+RUN_dir = '/home/croco/croco_pytools/18-05-2026/'
 #
 #  CROCO input netcdf files directory
 #
@@ -323,7 +323,7 @@ if OGCM=='ECCO':
     fdays=5
 elif OGCM=='mercator':
     hdays=2
-    fdays=5
+    fdays=7
 #
 # Local time= UTC + timezone
 #
