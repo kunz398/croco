@@ -23,7 +23,7 @@ import logging
 
 # Import CROCO Python tools
 try:
-    from cp_g_col_croco_pytools.Forecast_CROCO.old__croco_tools_params import *
+    from croco_tools_params import *
     # Don't import make_gfs and make_OGCM_frcst directly to avoid side effects
     # import make_gfs
     # import make_OGCM_frcst

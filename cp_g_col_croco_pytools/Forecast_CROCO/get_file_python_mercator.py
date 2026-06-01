@@ -1,4 +1,4 @@
-from cp_g_col_croco_pytools.Forecast_CROCO.old__croco_tools_params import *
+from croco_tools_params import *
 import copernicusmarine
 from datetime import datetime, timedelta
 import re

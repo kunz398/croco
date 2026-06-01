@@ -15,19 +15,6 @@ def lookvar(input):
                'time': 'time',\
                'time_dim':'time'\
              }
-    elif input == 'f_mercator':
-        dico={ 'depth':'depth',\
-               'lonr':'lonT','lonu':'lonU','lonv':'lonV',\
-               'latr':'latT','latu':'latU','latv':'latV',\
-               'ssh':'ssh',\
-               'temp':'temp',\
-               'salt':'salt',\
-               'u': 'u',\
-               'v': 'v',\
-               'time': 'time',\
-               'time_dim':'time'\
-             }
-
 
     elif input == 'eccov4':
         dico={ 'depth':'Z',\

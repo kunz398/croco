@@ -14,7 +14,7 @@ import Preprocessing_tools as ppt
 ##################### USERS DEFINED VARIABLES ########################
 #
 # Common parameters
-from cp_g_col_croco_pytools.Forecast_CROCO.croco_tools_params import *
+from croco_tools_params import *
 # Get date
 #
 rundate_str=datetime.today()

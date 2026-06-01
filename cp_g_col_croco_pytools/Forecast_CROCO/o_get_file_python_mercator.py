@@ -17,7 +17,7 @@
 #
 # Currently needs motu-client.py v.1.0.8 and Python 2.7.x
 import subprocess
-from cp_g_col_croco_pytools.Forecast_CROCO.old__croco_tools_params import *
+from croco_tools_params import *
 
 def get_mercator(pathmotu,mercator_type,url,sid,pid,vars,geom,date,info,outname):
 	if mercator_type==1: # Mercator data 1/12 deg

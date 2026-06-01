@@ -51,7 +51,7 @@ import tides_class as Inp
 # Initial date
 Yini, Mini, Dini = 1980, 1, 1
 # Origin year
-Yorig, Morig, Dorig = 1950, 1, 1 # 1900,1,1 if TIDES_MAS OR ANA_INITIAL+USE_CALENDAR defined in cppdef.h
+Yorig, Morig, Dorig = 1980, 1, 1 # 1900,1,1 if TIDES_MAS OR ANA_INITIAL+USE_CALENDAR defined in cppdef.h
 
 # Input data information and formating
 # Note: if you are using a tpxo dataset please be sure to have somewhere in 
@@ -75,7 +75,7 @@ croco_dir = '/DATA/CROCO/croco-v2.1.0/CONFIGS/1980Niue_1k/CROCO_FILES/'
 croco_grd = 'croco_child_Niue.nc'
 
 # Tide file informations
-croco_filename = '1980croco_frc.nc'
+croco_filename = 'croco_frc.nc'
 tides = ['M2','S2','N2','K2','K1','O1','P1','Q1','Mf','Mm']
 
 cur = True # Set to True if you to compute currents

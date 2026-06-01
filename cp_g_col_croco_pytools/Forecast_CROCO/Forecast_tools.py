@@ -9,15 +9,15 @@ from datetime import datetime, timedelta
 import numpy as np
 from netCDF4 import Dataset 
 import pandas as pd
-import get_file_python_mercator as gfm
+import sys
+import os
 from pydap.client import open_url
 import pprint
 import subprocess
 import Preprocessing_tools as ppt
 import oforc_OGCM as ofgm
-import os
-import sys
-from cp_g_col_croco_pytools.Forecast_CROCO.old__croco_tools_params import *
+import get_file_python_mercator as gfm
+from croco_tools_params import *
 import boto3
 from botocore import UNSIGNED
 from botocore.config import Config
@@ -993,9 +993,7 @@ def download_GFS(today,lonmin,lonmax,latmin,latmax,FRCST_dir,Yorig,it,keep_grib=
   # Calculate number of forecast hours needed
   # For hindcast: use analysis (f000) and early forecast hours
   # For forecast: use forecast hours
-  # +2 instead of +1: ensures at least one extra day of forcing beyond the
-  # simulation end so CROCO's get_bulk_ can always bracket the final time step.
-  total_days = hdays + fdays + 2
+  total_days = hdays + fdays + 1
   forecast_hours = list(range(0, total_days * 24, it * 3))  # it*3 hour intervals
   
   print(f'  Downloading {len(forecast_hours)} forecast hours: {forecast_hours[0]} to {forecast_hours[-1]}')

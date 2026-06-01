@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 import subprocess
 import pandas as pd
 import xarray as xr
-from cp_g_col_croco_pytools.Forecast_CROCO.old__croco_tools_params import *
+from croco_tools_params import *
 import Forecast_tools_new as ft
 from main_croco import run_croco
 

@@ -1,65 +1,86 @@
-# Dockerfile for CROCO Python Forecast System
-# Image provides compilers + Python packages only.
-# Project code and data are always supplied via volume mount at runtime.
-# Nothing is copied into the image — builds stay fast and incremental.
+# Dockerfile for CROCO Niue Forecast System
+# Installs all dependencies; CROCO is compiled at runtime on the target machine
+# All forecast data lives outside the container, mounted at /data
+
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV SETUPTOOLS_USE_DISTUTILS=stdlib
 
-# Install system dependencies (compilers, NetCDF, MPI, Python)
+# System dependencies
 RUN apt-get update && apt-get install -y \
-    python3 python3-pip python3-dev \
-    ca-certificates curl \
-    gfortran gcc make cmake \
-    build-essential \
-    libeigen3-dev \
-    libgsl-dev \
+    wget curl git make cmake \
+    gfortran gcc g++ cpp \
     libnetcdf-dev netcdf-bin libnetcdff-dev \
-    libopenblas-dev \
-    liblapack-dev \
-    libgeos-dev \
-    libproj-dev \
-    proj-data \
-    libwxgtk3.0-gtk3-dev \
-    libboost-all-dev \
-    git \
-    mpich libmpich-dev \
+    libopenblas-dev liblapack-dev \
+    libopenmpi-dev openmpi-bin \
+    libhdf5-dev \
     libeccodes-dev \
+    libboost-all-dev \
+    nco \
+    bzip2 ca-certificates \
+    rsync \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies (cached layer — only rebuilt when this list changes)
-RUN pip3 install --upgrade pip setuptools wheel && \
-    pip3 install numpy==1.23.5 matplotlib==3.6.2 scipy==1.9.3 cartopy==0.21.0 \
-    traits==6.4.1 traitsui==7.4.2 netcdf4==1.6.2 dask==2022.11.1 'xarray>=2023.4.0' \
-    geopandas==0.12.1 regionmask==0.9.0 pyinterp==2022.10.1 dill copernicusmarine pydap jinja2 \
-    cfgrib eccodes requests s3fs boto3 fsspec h5py h5netcdf \
-    xgcm cf_xarray intake pandas distributed pyamg xrft numba
+# Create croco user and /data mount point
+RUN useradd -ms /bin/bash croco && \
+    mkdir -p /data && \
+    chown croco:croco /data
 
-# Install nco (provides ncrcat CLI tool used by postprocess.py)
-RUN apt-get update && apt-get install -y nco && rm -rf /var/lib/apt/lists/*
+USER croco
+WORKDIR /home/croco
 
-# Fix 1: Repair the _sysconfigdata file corrupted by the previous bad patch run.
-# Use sed (atomic in-place edit) — the Python list-comprehension approach
-# truncated the file before reading it (open(f,'w') evaluated before open(f).read()).
-RUN sed -i 's/-Wl,-Bsymbolic-functions//g' \
-    /usr/lib/python3.10/_sysconfigdata__x86_64-linux-gnu.py
+# Install Miniconda
+RUN wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+      -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -p /home/croco/miniconda3 && \
+    rm /tmp/miniconda.sh
 
-# Fix 2: Strip linker hardening flags from /usr/bin/nf-config itself.
-# The flags (-Wl,-Bsymbolic-functions, -flto=auto, -Wl,-z,relro, etc.) are
-# hardcoded in the nf-config shell script's flibs= variable. They get passed
-# by PREPRO's Makefile NETCDFLIB=$(shell nf-config --flibs) to f2py, which
-# passes them to gfortran as source-file arguments → "error: unknown file type".
-RUN sed -i \
-    's/ -Wl,-Bsymbolic-functions//g; s/ -flto=auto//g; s/ -ffat-lto-objects//g; s/ -Wl,-z,relro//g; s/ -Wl,-z,now//g' \
-    /usr/bin/nf-config
+ENV PATH="/home/croco/miniconda3/bin:${PATH}"
 
-# Working directory matches the volume mount point used at runtime
-WORKDIR /home/croco/croco_pytools
+# Create conda env with Python 3.9 and pyinterp
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r && \
+    conda create -n croco_forecast python=3.9 -y && \
+    conda install -n croco_forecast -c conda-forge -y pyinterp && \
+    conda clean -afy
 
-ENV PYTHONPATH="/home/croco/croco_pytools:/home/croco/croco_pytools/cp_g_col_croco_pytools/Forecast_CROCO:/home/croco/croco_pytools/cp_g_col_croco_pytools/PREPRO:/home/croco/croco_pytools/cp_g_col_croco_pytools/PREPRO/Modules"
-
-VOLUME ["/home/croco/croco_pytools"]
+# Install remaining Python packages
+RUN /home/croco/miniconda3/envs/croco_forecast/bin/pip install --no-cache-dir \
+    numpy==1.24.3 \
+    matplotlib==3.9.4 \
+    scipy==1.13.1 \
+    cartopy==0.22.0 \
+    netcdf4==1.7.2 \
+    dask==2024.8.0 \
+    distributed==2024.8.0 \
+    xarray==2024.7.0 \
+    geopandas \
+    regionmask \
+    dill \
+    mpi4py \
+    pydap \
+    jinja2 \
+    pandas \
+    boto3 \
+    fsspec \
+    zarr \
+    h5netcdf \
+    h5py \
+    xgcm \
+    intake \
+    cf_xarray \
+    pyamg \
+    xrft \
+    numba \
+    pyarrow \
+    bokeh \
+    lxml \
+    pyyaml \
+    tqdm \
+    cfgrib \
+    eccodes \
+    copernicusmarine
 
 ENTRYPOINT ["/bin/bash", "-c"]
-CMD ["bash /home/croco/croco_pytools/run_croco.sh"]
+CMD ["source /home/croco/miniconda3/bin/activate croco_forecast && bash /data/run_croco_docker.sh"]

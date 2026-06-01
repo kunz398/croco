@@ -43,24 +43,24 @@ import tools_make_grid
 #--- USER CHANGES ---------------------------------------------------------
 
 # Grid center [degree]
-tra_lon = -178.0807 # Longitude of the grid center 
-tra_lat = -8.63 # Latitude of the grid center
+tra_lon =  15 # Longitude of the grid center 
+tra_lat = -32 # Latitude of the grid center
 
 # Grid size [km]
-size_x = 1220
-size_y = 1050
+size_x = 1556
+size_y = 1334
 
 # Grid number of points 
 # Note: grid resolution is grid size / number of points
-nx = 1220
-ny = 1050
+nx = 39
+ny = 40
 
 # Grid rotation [degree]
 rot = 0
 
 # Smoothing parameters
 # (see online documentation for more details)
-hmin        = 5    # Minimum depth [m]
+hmin        = 50    # Minimum depth [m]
 hmax        = 6000  # Maximum depth [m]
 interp_rad  = 2     # Interpolation radius in number of points (usually between 2 and 8)
 rfact       = 0.2   # Maximum r-fact to reach (the lower it is, the smoother it will be)    
@@ -76,7 +76,7 @@ shp_file = '../../DATASETS_CROCOTOOLS/gshhs/GSHHS_shp/i/GSHHS_i_L1.shp'
 sgl_connect=[False,20,20] # True or False, point indices inside the main water body
 
 # Output grid file
-output_file="./Tuvalu_croco_grdT1.nc"
+output_file="../../CROCO_FILES/croco_grd.nc"
 
 #--- END USER CHANGES -----------------------------------------------------
 

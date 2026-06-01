@@ -97,12 +97,13 @@ makeplot     = 0         # 1: create graphics after each preprocessing step
 #
 #  CROCOTOOLS directory
 #
-CROCOTOOLS_dir = '/home/oscar/Documentos/ANH/croco_tools_py-main/'
+import os
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+CROCOTOOLS_dir = os.path.join(os.path.dirname(SCRIPT_DIR), '')
 #
-#  Run directory
+#  Run directory (can be overridden by environment or script)
 #
-#RUN_dir = '/home/croco/croco_pytools/18-05-2026/'
-RUN_dir = '/home/croco/croco_pytools/18-05-2026/'
+RUN_dir = os.getenv('CROCO_RUN_DIR', '/data/01-06-2026/')
 #
 #  CROCO input netcdf files directory
 #
@@ -110,7 +111,7 @@ CROCO_files_dir=RUN_dir+ 'CROCO_FILES/'
 #
 #  Global data directory (etopo+ coads+ datasets download from ftp+ etc..)
 #
-DATADIR='/DATA/CROCO/DATASETS_CROCOTOOLS/' 
+DATADIR = os.path.join(CROCOTOOLS_dir, 'DATASETS_CROCOTOOLS/') 
 #
 #  Forcing data directory (ncep+ quikscat+ datasets download with opendap+ etc..)
 #
@@ -323,7 +324,7 @@ if OGCM=='ECCO':
     fdays=5
 elif OGCM=='mercator':
     hdays=2
-    fdays=7
+    fdays=5
 #
 # Local time= UTC + timezone
 #

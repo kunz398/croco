@@ -15,7 +15,7 @@ import pandas as pd
 import Forecast_tools as ft
 import Preprocessing_tools as ppt
 from scipy.interpolate import RegularGridInterpolator
-from cp_g_col_croco_pytools.Forecast_CROCO.croco_tools_params import *
+from croco_tools_params import *
 
 # Helper function for interpolation
 def interpolate_to_grid(lon_src, lat_src, var_src, lon_dst, lat_dst, method='cubic'):

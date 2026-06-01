@@ -11,7 +11,6 @@ Author: Translated from MATLAB version
 Date: August 2025
 """
 
-from html import parser
 import os
 import sys
 import shutil
@@ -23,7 +22,7 @@ import logging
 
 # Import CROCO Python tools
 try:
-    from cp_g_col_croco_pytools.Forecast_CROCO.croco_tools_params import *
+    from croco_tools_params import *
     # Don't import make_gfs and make_OGCM_frcst directly to avoid side effects
     # import make_gfs
     # import make_OGCM_frcst
@@ -35,48 +34,8 @@ except ImportError as e:
     sys.exit(1)
 
 # Set up logging
-_log_date = datetime.datetime.now().strftime('%d-%m-%Y')
-_log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'logs')
-os.makedirs(_log_dir, exist_ok=True)
-_log_file = os.path.join(_log_dir, f'{_log_date}_run_forecast.log')
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)-5s %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[
-        logging.FileHandler(_log_file),
-        logging.StreamHandler()
-    ]
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-
-def _run_subprocess_logged(cmd, label, cwd=None):
-    """
-    Run *cmd* as a subprocess, streaming every output line through the root
-    logger prefixed with [label].  Returns the process return-code.
-    stdout and stderr are merged so nothing is lost.
-    """
-    import subprocess
-    env = os.environ.copy()
-    env['PYTHONUNBUFFERED'] = '1'   # force child Python to flush print() immediately
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,          # line-buffered on our side
-        env=env,
-        cwd=cwd,
-    )
-    for line in proc.stdout:
-        line = line.rstrip('\n')
-        if line:
-            logger.info(f"[{label}] {line}")
-    proc.wait()
-    return proc.returncode
-
 
 class CROCOForecastRunner:
     """
@@ -115,7 +74,7 @@ class CROCOForecastRunner:
         
         # Load tidal forcing configuration
         try:
-            from cp_g_col_croco_pytools.Forecast_CROCO.croco_tools_params import add_tides_fcst, grdname
+            from croco_tools_params import add_tides_fcst, grdname
             self.add_tides_fcst = add_tides_fcst
             self.grdname = grdname
             logger.info(f"Tidal forcing configuration: add_tides_fcst = {self.add_tides_fcst}")
@@ -129,7 +88,7 @@ class CROCOForecastRunner:
         """Setup directory structure"""
         # Use RUN_dir from croco_tools_params if available, otherwise use current directory
         try:
-            from cp_g_col_croco_pytools.Forecast_CROCO.croco_tools_params import RUN_dir
+            from croco_tools_params import RUN_dir
             self.RUNDIR = RUN_dir
         except ImportError:
             self.RUNDIR = os.getcwd()
@@ -197,25 +156,20 @@ class CROCOForecastRunner:
         if not self.PRE_PROCESS:
             logger.info("Skipping preprocessing (PRE_PROCESS=0)")
             return True
+
         logger.info("Processing boundary and forcing files...")
         try:
-            # Check if parameter file exists
             if not os.path.exists('croco_tools_params.py'):
                 logger.error("croco_tools_params.py not found. Please ensure it exists.")
                 return False
-            # Test if we can import the parameters
+
             try:
-                import cp_g_col_croco_pytools.Forecast_CROCO.croco_tools_params as croco_tools_params
+                import croco_tools_params
                 logger.info("Configuration loaded successfully")
-                self.makeblk_gfs = getattr(croco_tools_params, 'makeblk_gfs', 1)
-                self.makefrc_gfs = getattr(croco_tools_params, 'makefrc_gfs', 1)
-                logger.info(
-                    f"GFS atmospheric output switches: makeblk_gfs={self.makeblk_gfs}, makefrc_gfs={self.makefrc_gfs}"
-                )
             except Exception as e:
                 logger.error(f"Error loading configuration: {e}")
                 return False
-            # Determine which processing steps to run
+
             if getattr(self, 'SKIP_GFS', False):
                 run_gfs = False
                 run_ogcm = True
@@ -225,17 +179,26 @@ class CROCOForecastRunner:
             else:
                 run_gfs = True
                 run_ogcm = True
-            # If both skip_gfs and only_gfs are set, skip all (user error)
+
             if getattr(self, 'SKIP_GFS', False) and getattr(self, 'ONLY_GFS', False):
                 logger.error("Both --skip-gfs and --only-gfs flags set. Nothing to process.")
                 return False
-            # Run GFS processing if requested
+
             if run_gfs:
                 logger.info("Running GFS data processing...")
                 try:
-                    rc = _run_subprocess_logged([sys.executable, 'make_gfs.py'], 'make_gfs')
-                    if rc != 0:
-                        logger.error(f"GFS processing failed (exit code {rc})")
+                    proc = subprocess.Popen(
+                        [sys.executable, 'make_gfs.py'],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1,
+                    )
+                    for line in proc.stdout:
+                        logger.info(f"[make_gfs] {line.rstrip()}")
+                    proc.wait()
+                    if proc.returncode != 0:
+                        logger.error(f"GFS processing failed with exit code {proc.returncode}")
                         return False
                     logger.info("GFS processing completed")
                 except Exception as e:
@@ -243,13 +206,22 @@ class CROCOForecastRunner:
                     return False
             else:
                 logger.info("Skipping GFS data processing (--skip-gfs)")
-            # Run OGCM/Mercator processing if requested
+
             if run_ogcm:
                 logger.info("Running OGCM (Mercator) data processing...")
                 try:
-                    rc = _run_subprocess_logged([sys.executable, 'make_OGCM_frcst.py'], 'make_OGCM')
-                    if rc != 0:
-                        logger.error(f"OGCM processing failed (exit code {rc})")
+                    proc = subprocess.Popen(
+                        [sys.executable, 'make_OGCM_frcst.py'],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1,
+                    )
+                    for line in proc.stdout:
+                        logger.info(f"[make_OGCM] {line.rstrip()}")
+                    proc.wait()
+                    if proc.returncode != 0:
+                        logger.error(f"OGCM processing failed with exit code {proc.returncode}")
                         return False
                     logger.info("OGCM processing completed")
                 except Exception as e:
@@ -257,6 +229,7 @@ class CROCOForecastRunner:
                     return False
             else:
                 logger.info("Skipping OGCM (Mercator) data processing (--only-gfs)")
+
             return True
         except Exception as e:
             logger.error(f"Unexpected error during preprocessing: {e}")
@@ -267,25 +240,13 @@ class CROCOForecastRunner:
         logger.info("Copying files to scratch directory...")
         
         # File patterns to copy from MSSDIR (use glob patterns to find most recent files)
-        makeblk_gfs = getattr(self, 'makeblk_gfs', 1)
-        makefrc_gfs = getattr(self, 'makefrc_gfs', 1)
-
         file_patterns = [
+            (f"{self.MODEL}_blk_GFS_*.nc", self.BLKFILE),
+            (f"{self.MODEL}_frc_GFS_*.nc", self.FRCFILE),
             (f"{self.MODEL}_bry_mercator_*.nc", self.BRYFILE),
             (f"{self.MODEL}_clm_mercator_*.nc", self.CLMFILE),
             (f"{self.MODEL}_grd.nc", self.GRDFILE)
         ]
-
-        if makeblk_gfs:
-            file_patterns.insert(0, (f"{self.MODEL}_blk_GFS_*.nc", self.BLKFILE))
-        else:
-            logger.info("Skipping BLK copy (makeblk_gfs=0)")
-
-        if makefrc_gfs:
-            insert_at = 1 if makeblk_gfs else 0
-            file_patterns.insert(insert_at, (f"{self.MODEL}_frc_GFS_*.nc", self.FRCFILE))
-        else:
-            logger.info("Skipping FRC copy (makefrc_gfs=0)")
         
         # Add tidal forcing file if tidal forcing is enabled
         if self.add_tides_fcst == 1:
@@ -510,8 +471,12 @@ class CROCOForecastRunner:
             return False
         
         try:
-            # Path to latest CROCO pytools 
-            prepro_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'prepro')
+            # Path to prepro directory — resolve relative to this script so it
+            # works both in the container (/tmp/croco_forecast/prepro) and
+            # in the host workspace (cp_g_col_croco_pytools/prepro).
+            prepro_path = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), '..', 'prepro')
+            )
             make_tides_script = os.path.join(prepro_path, 'make_tides.py')
             
             if not os.path.exists(make_tides_script):
@@ -550,7 +515,7 @@ Yorig, Morig, Dorig = 1980, 1, 1
 
 # Input data information and formating
 inputdata = 'tpxo7_croco'
-input_dir = '../DATASETS_CROCOTOOLS/TPXO7/'
+input_dir = '{os.path.join(os.path.dirname(prepro_path), "DATASETS_CROCOTOOLS", "TPXO7")}/'
 input_file = 'TPXO7.nc'
 input_type = 'Re_Im'
 multi_files = False
@@ -602,14 +567,14 @@ Correction_uv = True
                 
                 # Run the custom tides script
                 import subprocess
-                rc = _run_subprocess_logged(
-                    [sys.executable, tides_config_path],
-                    'make_tides',
-                    cwd=prepro_path,
-                )
-
-                if rc == 0:
+                result = subprocess.run([
+                    sys.executable, tides_config_path
+                ], capture_output=True, text=True, cwd=prepro_path)
+                
+                if result.returncode == 0:
                     logger.info("Tidal forcing generated successfully")
+                    logger.info(result.stdout)
+                    
                     # Check if the output file was created
                     tides_file = os.path.join(os.path.dirname(self.grdname), 'croco_frc.nc')
                     if os.path.exists(tides_file):
@@ -619,7 +584,8 @@ Correction_uv = True
                         logger.error("Tidal forcing file was not created")
                         return False
                 else:
-                    logger.error(f"Error generating tidal forcing (exit code {rc})")
+                    logger.error("Error generating tidal forcing:")
+                    logger.error(result.stderr)
                     return False
                     
             finally:

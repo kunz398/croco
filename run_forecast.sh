@@ -129,9 +129,10 @@ ls -1 "$targetDir" | while read -r line; do log "  $line"; done
 section "STEP 3: Configure parameters"
 paramsFile="$rundir/cp_g_col_croco_pytools/Forecast_CROCO/croco_tools_params.py"
 if [ -f "$paramsFile" ]; then
-    newRunDir="/home/croco/croco_pytools/$folder/"
+    newRunDir="/data/$folder/"
+    sed -i "s|RUN_dir = os.getenv('CROCO_RUN_DIR', '[^']*')|RUN_dir = os.getenv('CROCO_RUN_DIR', '$newRunDir')|" "$paramsFile"
     sed -i "s|RUN_dir = '[^']*'|RUN_dir = '$newRunDir'|" "$paramsFile"
-    log_ok "croco_tools_params.py: RUN_dir updated to $newRunDir"
+    log_ok "croco_tools_params.py: RUN_dir default updated to $newRunDir"
 fi
 
 # Load Copernicus Marine credentials if available
@@ -148,39 +149,27 @@ fi
 
 section "STEP 4: Docker container — preprocessing + MPI run"
 log "Starting Docker container..."
-# docker run --rm -i \
-#     --user "${HOST_UID}:${HOST_GID}" \
-#     --ipc=host \
-#     --cpuset-cpus "0-17" \
-#     -e HOME=/tmp \
-#     -e COPERNICUSMARINE_SERVICE_USERNAME="$COPERNICUSMARINE_SERVICE_USERNAME" \
-#     -e COPERNICUSMARINE_SERVICE_PASSWORD="$COPERNICUSMARINE_SERVICE_PASSWORD" \
-#     -v "${rundir}:/home/croco/croco_pytools" \
-#     --entrypoint "/bin/bash" \
-#     croco-forecast \
-#     -s <<'FORECAST_EOF'
 docker run --rm -i \
-    --user "${HOST_UID}:${HOST_GID}" \
     --ipc=host \
     --cpuset-cpus "0-35" \
     --cpu-shares 1024 \
     --ulimit stack=-1 \
     --ulimit memlock=-1 \
-    -e HOME=/tmp \
     -e OMP_NUM_THREADS=2 \
-    -e OMPI_MCA_btl=vader,self \
     -e COPERNICUSMARINE_SERVICE_USERNAME="$COPERNICUSMARINE_SERVICE_USERNAME" \
     -e COPERNICUSMARINE_SERVICE_PASSWORD="$COPERNICUSMARINE_SERVICE_PASSWORD" \
+    -e CROCO_RUN_DIR="/data/${folder}/" \
     -e FORECAST_FOLDER="$folder" \
     -e YESTERDAY_FOLDER="$yfolder" \
-    -v "${rundir}:/home/croco/croco_pytools" \
+    -v "${rundir}:/data" \
     --entrypoint "/bin/bash" \
     croco-forecast \
     -s <<'FORECAST_EOF'
 set -e
 set -o pipefail
+source /home/croco/miniconda3/bin/activate croco_forecast
 # Ensure the host-mounted logs directory exists inside the container
-mkdir -p /home/croco/croco_pytools/logs
+mkdir -p /data/logs
 
 _ts() { date '+%Y-%m-%d %H:%M:%S'; }
 _log()     { echo "[$(_ts)] $*"; }
@@ -192,21 +181,30 @@ _section() { echo ""; echo "[$(_ts)] ===========================================
 
 # from here -->>>
 #_section "Compiling PREPRO inside container"
-#cd /home/croco/croco_pytools/cp_g_col_croco_pytools/prepro/Modules/tools_fort_routines
+#cd /data/cp_g_col_croco_pytools/prepro/Modules/tools_fort_routines
 #make clean && make
 # <<<-- till here
 
 # Step 3b: run the forecast (preprocessing / boundary conditions / initial conditions)
 _section "[Docker 3b] Python pre-processing — GFS + OGCM"
-cd /home/croco/croco_pytools/cp_g_col_croco_pytools/Forecast_CROCO
-python3 run_croco_forecast.py
+WORKDIR=/tmp/croco_forecast
+rm -rf "$WORKDIR"
+mkdir -p "$WORKDIR"
+rsync -a --ignore-errors \
+    --exclude="*.swp" \
+    --exclude="nohup.out" \
+    --exclude="*.log" \
+    /data/cp_g_col_croco_pytools/ "$WORKDIR/" 2>/dev/null || true
+export PYTHONPATH="$WORKDIR/Forecast_CROCO:$WORKDIR/prepro:$WORKDIR/prepro/Modules:$WORKDIR/PREPRO:$WORKDIR/PREPRO/Modules:$PYTHONPATH"
+cd "$WORKDIR/Forecast_CROCO"
+python run_croco_forecast.py
 
 # Step 3c: hot restart patching (before MPI run)
 _section "[Docker 3c] Hot restart check"
 FOLDER=${FORECAST_FOLDER:-$(date +%d-%m-%Y)}
 YFOLDER=${YESTERDAY_FOLDER:-$(date -d "yesterday" +%d-%m-%Y)}
-SCRATCH=/home/croco/croco_pytools/$FOLDER/SCRATCH
-YRST=/home/croco/croco_pytools/$YFOLDER/SCRATCH/croco_rst_$YFOLDER.nc
+SCRATCH=/data/$FOLDER/SCRATCH
+YRST=/data/$YFOLDER/SCRATCH/croco_rst_$YFOLDER.nc
 
 if [ -f "$YRST" ]; then
     _log "OK    Hot restart: found $YRST — patching croco_forecast.in"
@@ -220,23 +218,27 @@ sed -i "s|croco_rst.nc|croco_rst_$FOLDER.nc|" $SCRATCH/croco_forecast.in
 
 # Step 3d: run CROCO ocean model with MPI
 _section "[Docker 3d] CROCO ocean model — MPI run"
-cd /home/croco/croco_pytools/$FOLDER/SCRATCH
+cd /data/$FOLDER/SCRATCH
 _log "Working dir : $(pwd)"
-_log "MPI log     : /home/croco/croco_pytools/logs/${FOLDER}_mpi.log"
+_log "MPI log     : /data/logs/${FOLDER}_mpi.log"
 mpirun -np 18 \
-    --allow-run-as-root \
     --map-by core \
     --bind-to core \
-    --mca btl vader,self \
-    --mca rtc ^hwloc \
-    ./croco croco_forecast.in 2>&1 | tee /home/croco/croco_pytools/logs/${FOLDER}_mpi.log
+    ./croco croco_forecast.in < /dev/null 2>&1 | tee /data/logs/${FOLDER}_mpi.log
 
 # Step 3e: post-process CROCO output - convert sigma to z-levels and concatenate
 _section "[Docker 3e] Sigma-to-z post-processing"
-_log "Input  : /home/croco/croco_pytools/$FOLDER/SCRATCH"
-_log "Log    : /home/croco/croco_pytools/logs/${FOLDER}_postprocess.log"
-python3 /home/croco/croco_pytools/FromGaby/postprocess.py /home/croco/croco_pytools/$FOLDER/SCRATCH \
-    2>&1 | tee /home/croco/croco_pytools/logs/${FOLDER}_postprocess.log
+_log "Input  : /data/$FOLDER/SCRATCH"
+_log "Log    : /data/logs/${FOLDER}_postprocess.log"
+python /data/FromGaby/postprocess.py /data/$FOLDER/SCRATCH \
+    2>&1 | tee /data/logs/${FOLDER}_postprocess.log
+
+# Fail fast if postprocess did not create the expected transfer file.
+POST_OUT="/data/$FOLDER/SCRATCH/d1_temp_salt_uv_z_all.nc"
+if [ ! -f "$POST_OUT" ]; then
+    _log "ERROR Postprocess output missing: $POST_OUT"
+    exit 1
+fi
 FORECAST_EOF
 
 if [ $? -ne 0 ]; then
@@ -256,6 +258,11 @@ if [ -f "$SRC_FILE" ]; then
 else
     log_warn "$SRC_FILE not found — skipping transfer."
 fi
+
+section "STEP 6: Cleanup dated folders"
+log "Running cleanup_croco.sh delete..."
+bash "$rundir/cleanup_croco.sh" delete 2>&1 | while IFS= read -r line; do log "$line"; done
+log_ok "Cleanup complete."
 
 section "CROCO FORECAST COMPLETE — $folder"
 log "Full log: $LOG_FILE"
