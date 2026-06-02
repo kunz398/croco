@@ -7,17 +7,40 @@ Reproduces the functionality of format_croco_z.sh
 import sys
 import os
 import logging
+from pathlib import Path
 
-# Add xcroco to path if not installed
-# Path is relative to this script: FromGaby/ -> workspace_root/cp_g_col_croco_pytools/
-xcroco_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'cp_g_col_croco_pytools')
-# xcroco_path = '/DATA/CROCO/croco_pytools-v1.0.3'  
-if xcroco_path not in sys.path:
-    sys.path.insert(0, xcroco_path)
+def _ensure_xcroco_on_path():
+    """Ensure xcroco is importable from install, env override, or known local roots."""
+    try:
+        import xcroco  # noqa: F401
+        return
+    except ModuleNotFoundError:
+        pass
+
+    script_dir = Path(__file__).resolve().parent
+    env_path = os.environ.get('XCROCO_PATH', '').strip()
+
+    candidates = [
+        Path(env_path) if env_path else None,
+        script_dir.parent / 'cp_g_col_croco_pytools',
+        Path('/DATA/CROCO/cp_g_col_croco_pytools'),
+    ]
+
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        pkg_root = candidate / 'xcroco' / '__init__.py'
+        if pkg_root.exists():
+            candidate_str = str(candidate)
+            if candidate_str not in sys.path:
+                sys.path.insert(0, candidate_str)
+            return
+
+
+_ensure_xcroco_on_path()
 
 import xarray as xr
 import numpy as np
-from pathlib import Path
 
 # Logger — writes to stdout so it appears in run_forecast.log via the container pipe
 logging.basicConfig(
@@ -28,9 +51,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import xcroco modules
-from xcroco.model import Model
-import xcroco.inout as io
-import xcroco.gridop as gop
+try:
+    from xcroco.model import Model
+    import xcroco.inout as io
+    import xcroco.gridop as gop
+except ModuleNotFoundError as exc:
+    raise ModuleNotFoundError(
+        "xcroco is not available. Install it or set XCROCO_PATH to a folder containing xcroco/."
+    ) from exc
 
 
 def _get_rho_mask(ds, grid_file):
@@ -331,6 +359,48 @@ def croco_sigma_to_z(input_file, output_file, grid_file,
     if 'z' in ds_out.coords:
         ds_out = ds_out.drop_vars('z')
 
+    # Add zeta (free-surface elevation) — already on rho grid, no interpolation needed.
+    # xcroco may not expose zeta in ds.data_vars, so read it straight from the raw file.
+    zeta_added = False
+    try:
+        with xr.open_dataset(input_file) as ds_raw:
+            if 'zeta' in ds_raw.data_vars:
+                zeta = ds_raw['zeta'].load()
+                # Rename CROCO native dims to match ds_out: eta_rho→y, xi_rho→x, ocean_time→time
+                rename_map = {}
+                if 'eta_rho' in zeta.dims:
+                    rename_map['eta_rho'] = 'y'
+                if 'xi_rho' in zeta.dims:
+                    rename_map['xi_rho'] = 'x'
+                # CROCO time dimension can be 'ocean_time' or 'time' in the raw file
+                for tdim in ('ocean_time', 'scrum_time', 'time'):
+                    if tdim in zeta.dims:
+                        rename_map[tdim] = 'time'
+                        break
+                if rename_map:
+                    zeta = zeta.rename(rename_map)
+                # Replace time coordinate values with the CF-compliant ones already in ds_out
+                zeta['time'] = ds_out['time']
+                # Attach spatial auxiliary coordinates so THREDDS treats it as geo2d
+                if 'latitude' in ds_out.coords:
+                    zeta = zeta.assign_coords(latitude=ds_out['latitude'])
+                if 'longitude' in ds_out.coords:
+                    zeta = zeta.assign_coords(longitude=ds_out['longitude'])
+                zeta.attrs.update({
+                    'standard_name': 'sea_surface_height_above_geoid',
+                    'long_name': 'free-surface elevation',
+                    'units': 'm',
+                })
+                # Do NOT set 'coordinates' in attrs — xarray encodes auxiliary
+                # coordinates automatically and raises ValueError if it's also in attrs.
+                ds_out['zeta'] = zeta
+                zeta_added = True
+                logger.info(f"Added zeta to output dataset with dims {zeta.dims}")
+            else:
+                logger.warning("zeta not found in raw history file; skipping.")
+    except Exception as e:
+        logger.warning(f"Could not read zeta from raw file: {e}")
+
     # Set encoding to ensure coordinates are proper types and have no _FillValue
     encoding = {
         'x': {'dtype': 'float64', '_FillValue': None},
@@ -338,8 +408,10 @@ def croco_sigma_to_z(input_file, output_file, grid_file,
         'depth': {'dtype': 'float64', '_FillValue': None},
         'time': {'_FillValue': None},
         'latitude': {'_FillValue': None},
-        'longitude': {'_FillValue': None}
+        'longitude': {'_FillValue': None},
     }
+    if zeta_added:
+        encoding['zeta'] = {'_FillValue': float('nan')}
 
     # Write to output file
     if os.path.exists(output_file):

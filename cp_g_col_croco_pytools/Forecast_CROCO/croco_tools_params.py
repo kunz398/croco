@@ -103,7 +103,7 @@ CROCOTOOLS_dir = os.path.join(os.path.dirname(SCRIPT_DIR), '')
 #
 #  Run directory (can be overridden by environment or script)
 #
-RUN_dir = os.getenv('CROCO_RUN_DIR', '/data/01-06-2026/')
+RUN_dir = os.getenv('CROCO_RUN_DIR', '/data/03-06-2026/')
 #
 #  CROCO input netcdf files directory
 #
